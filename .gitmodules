@@ -1,0 +1,6 @@
+[submodule "bluefox2"]
+	path = bluefox2
+	url = git@github.com:MBZIRCUPENNCTU/bluefox2.git
+[submodule "terarangerone-ros"]
+	path = terarangerone-ros
+	url = git@github.com:MBZIRCUPENNCTU/terarangerone-ros.git

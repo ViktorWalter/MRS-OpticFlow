@@ -1,0 +1,61 @@
+<launch>
+	<arg name="DEBUG" default="false"/>
+	<arg name="uav_name" default="$(optenv UAV_NAME uav)"/>
+	<arg name="gui" default="true"/>
+	<arg name="useCuda" default="true"/>
+	<arg name="cudaMethod" default="0"/>
+	<arg name="camera" default="mv_25001879"/>
+	<group ns="$(arg uav_name)">
+
+		<node name="teraranger" pkg="terarangerone" type="terarangerone_node" output="screen">		
+		<param name="Mode" value="2"/>
+		</node>
+	
+
+    <!-- Node -->
+    <node pkg="bluefox2" type="bluefox2_single_node" name="$(arg camera)" output="screen">
+        <param name="identifier" type="string" value="25001879"/>
+        <param name="frame_id" type="string" value="mv_25001879"/>
+        <param name="camera_name" type="string" value="mv_25001879"/>
+        <param name="calib_url" type="string" value="file://${ROS_HOME}/camera_info/$(arg camera).yaml"/>
+        <param name="fps" type="double" value="170"/>
+        <param name="idpf" type="int" value="0"/>
+        <param name="aec" type="bool" value="false"/>
+        <param name="expose_us" type="int" value="10000"/>
+        <param name="agc" type="bool" value="false"/>
+        <param name="gain_db" type="double" value="0.0"/>
+        <param name="cbm" type="int" value="3"/>
+        <param name="ctm" type="int" value="1"/>
+        <param name="dcfm" type="int" value="0"/>
+        <param name="hdr" type="bool" value="false"/>
+        <param name="wbp" type="int" value="-1"/>
+        <param name="request" type="int" value="0"/>
+        <param name="mm" type="int" value="0"/>
+        <param name="image_raw/compressed/jpeg_quality" type="int" value="8"/>
+    </node>
+
+    <!-- Proc -->
+    <node if="false"
+        pkg="image_proc" type="image_proc" name="image_proc" ns="$(arg camera)">
+    </node>
+
+    <!-- View -->
+    <arg name="image" default="image_raw"/>
+    <node if="false"
+        pkg="image_view" type="image_view" name="viewer" ns="$(arg camera)"
+        args="image:=$(arg image)" output="screen">
+    </node>
+
+		
+	  	<node name="optic_flow" pkg="optic_flow" type="optic_flow_node" output="screen" >
+			<param name="DEBUG"		type="bool" value="$(arg DEBUG)"/> 
+			<param name="gui"             type="bool" value="$(arg gui)"/>
+		 	<param name="FrameSize"       type="int" value="64"/>
+		 	<param name="SamplePointSize" type="int" value="8"/>
+			<param name="ScanDiameter"    type="int" value="4"/>
+        		<rosparam file="$(find optic_flow)/yaml/ost.yaml"/>
+        		<param name="useCuda"		type="bool" value="$(arg useCuda)"/>
+			<param name="cudaMethod"	type="int" value="$(arg cudaMethod)"/>
+	  	</node>
+	</group>
+</launch>
