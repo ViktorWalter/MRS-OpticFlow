@@ -4,3 +4,6 @@
 [submodule "terarangerone-ros"]
 	path = terarangerone-ros
 	url = git@github.com:MBZIRCUPENNCTU/terarangerone-ros.git
+[submodule "camera_base"]
+	path = camera_base
+	url = git@github.com:KumarRobotics/camera_base.git
