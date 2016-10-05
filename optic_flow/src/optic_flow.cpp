@@ -7,11 +7,14 @@
 #include <sensor_msgs/Range.h>
 #include <geometry_msgs/Pose2D.h>
 using namespace std;
-#include <opencv2/cudaarithm.hpp>
-#include <opencv2/cudaoptflow.hpp>
-#include <opencv2/cudalegacy.hpp>
-#include <opencv2/cudaimgproc.hpp>
-#include <time.h>
+#include <opencv2/gpu/gpu.hpp>
+//#include <opencv2/gpuoptflow.hpp>
+//#include <opencv2/gpulegacy.hpp>
+//#include <opencv2/gpuimgproc.hpp>
+//#include <time.h>
+
+#include "optic_flow/FastSpacedBMOptFlow.h"
+
 
 namespace enc = sensor_msgs::image_encodings;
 
@@ -67,10 +70,6 @@ public:
         imPrev = cv::Mat(frameSize,frameSize,CV_8UC1);
         imPrev = cv::Scalar(0);
 
-        brox =  cv::cuda::BroxOpticalFlow::create(0.197f, 50.0f, 0.8f, 10, 77, 10);
-        lk =    cv::cuda::DensePyrLKOpticalFlow::create(cv::Size(7, 7));
-        farn =  cv::cuda::FarnebackOpticalFlow::create();
-        tvl1 =  cv::cuda::OpticalFlowDual_TVL1::create();
 
         begin = ros::Time::now();
 
@@ -112,6 +111,13 @@ private:
 
     void Process(const cv_bridge::CvImagePtr image)
     {
+
+        cv::gpu::BroxOpticalFlow brox(0.197f, 50.0f, 0.8f, 10, 77, 10);
+        //lk =    cv::gpu::DensePyrLKOpticalFlow::create(cv::Size(7, 7));
+        //cv::Ptr<cv::gpu::DensePyrLKOpticalFlow> lk;
+        cv::gpu::FarnebackOpticalFlow farn;
+        //cv::Ptr<cv::gpu::OpticalFlowDual_TVL1> tvl1;
+
         ros::Duration dur = ros::Time::now()-begin;
         ROS_INFO("freq = %fHz",1.0/dur.toSec());
         begin = ros::Time::now();
@@ -136,18 +142,18 @@ private:
 
         cv::cvtColor(imOrigScaled(frameRect),imCurr,CV_RGB2GRAY);
 
-        if (false)
+        if (useCuda)
         {
-            imPrev_g = cv::cuda::GpuMat(imPrev);
-            imCurr_g = cv::cuda::GpuMat(imCurr);
-            flow_g = cv::cuda::GpuMat(imPrev.size(), CV_32FC2);
-            onePixel_g = cv::cuda::GpuMat(1,1,CV_32SC1);
+            imPrev_g = cv::gpu::GpuMat(imPrev);
+            imCurr_g = cv::gpu::GpuMat(imCurr);
+            //flow_g = cv::gpu::GpuMat(imPrev.size(), CV_32FC2);
+            onePixel_g = cv::gpu::GpuMat(1,1,CV_32SC1);
 
             ROS_INFO("method: %d",cudaMethod);
             if (cudaMethod == 0)
             {
-                cv::cuda::GpuMat imPrev_gf;
-                cv::cuda::GpuMat imCurr_gf;
+                cv::gpu::GpuMat imPrev_gf;
+                cv::gpu::GpuMat imCurr_gf;
 
                 imPrev_g.convertTo(imPrev_gf, CV_32F, 1.0 / 255.0);
                 imCurr_g.convertTo(imCurr_gf, CV_32F, 1.0 / 255.0);
@@ -155,64 +161,33 @@ private:
 
 
                 clock_t beginGPU = clock();
-                brox->calc(imCurr_gf, imPrev_gf, flow_g);
+                brox(imCurr_gf, imPrev_gf, flowX_g,flowY_g);
                 clock_t end = clock();
                 double elapsed_secs = double(end - beginGPU) / CLOCKS_PER_SEC;
 
                 cout << "Brox : " << elapsed_secs*1000 << " msec" << endl;
 
                 if (gui)
-                    showFlow("Brox", flow_g);
+                    showFlow("Brox", flowX_g,flowY_g);
             }
             else if (cudaMethod == 1)
                 {
-                    ROS_INFO("Method 1: 'Lucas-Kanade' is not usable in gf8600GT");
-                /*
                     clock_t beginGPU = clock();
-                    lk->calc(imCurr_g, imPrev_g, flow_g);
-                    clock_t end = clock();
-                      double elapsed_secs = double(end - beginGPU) / CLOCKS_PER_SEC;
-
-                    cout << "LK : " << elapsed_secs*1000 << " msec" << endl;
-
-                    if (gui)
-                        showFlow("LK", flow_g);*/
-                    ROS_BREAK();
-                }
-            else if (cudaMethod == 2)
-                {
-                    clock_t beginGPU = clock();
-                    farn->calc(imCurr_g, imPrev_g, flow_g);
+                    farn(imCurr_g, imPrev_g, flowX_g, flowY_g);
                     clock_t end = clock();
                       double elapsed_secs = double(end - beginGPU) / CLOCKS_PER_SEC;
 
                     cout << "Farn : " << elapsed_secs*1000 << " msec" << endl;
 
                     if (gui)
-                        showFlow("Farn", flow_g);
+                        showFlow("Brox", flowX_g,flowY_g);
                 }
-            else if (cudaMethod == 3)
-                {
-                    clock_t beginGPU = clock();
-                    tvl1->calc(imCurr_g, imPrev_g, flow_g);
-                    clock_t end = clock();
-                      double elapsed_secs = double(end - beginGPU) / CLOCKS_PER_SEC;
-
-                    cout << "TVL1 : " << elapsed_secs*1000 << " msec" << endl;
-
-                    if (gui)
-                        showFlow("TVL1", flow_g);
-                }
-            else
+            else if (cudaMethod == 2)
             {
-                cv::cuda::GpuMat flowX_g;
-                cv::cuda::GpuMat flowY_g;
-                cv::cuda::GpuMat buf_g;
+                //cv::gpu::GpuMat buf_g;
 
                 clock_t beginGPU = clock();
-                cv::cuda::calcOpticalFlowBM(imCurr_g,imPrev_g,
-                                            cv::Size(8,8),cv::Size(1,1),cv::Size(scanRadius,scanRadius),false,
-                                            flowX_g,flowY_g,buf_g);
+                fastBM( imCurr_g,imPrev_g, flowX_g,flowY_g,8);
                 clock_t end = clock();
                   double elapsed_secs = double(end - beginGPU) / CLOCKS_PER_SEC;
 
@@ -221,11 +196,41 @@ private:
                 if (gui)
                     showFlow("TVL1", flowX_g, flowY_g);
 
+
+                cv::Scalar outputX;
+                cv::Scalar outputY;
+                outputX = cv::gpu::sum(flowX_g,buffer_g)/(double)flowX_g.size().area();
+                outputY = cv::gpu::sum(flowY_g,buffer_g)/(double)flowY_g.size().area();
+
+                //cv::Point2f refined = Refine(imCurr,imPrev,cv::Point2i(outputX,outputY),2);
+
+                //ROS_INFO("vxu = %d; vyu=%d",outputX,outputY);
+                ROS_INFO("vxr = %f; vyr=%f",outputX[0],outputY[0]);
+                double vxm, vym, vam;
+                vxm = outputX[0]*(currentRange/fx)/dur.toSec();
+                vym = outputY[0]*(currentRange/fy)/dur.toSec();
+                vam = sqrt(vxm*vxm+vym*vym);
+                ROS_INFO("vxm = %f; vym=%f; vam=%f",vxm,vym,vam );
+
+                geometry_msgs::Pose2D velocity;
+                velocity.x = vxm;
+                velocity.y = vym;
+                VelocityPublisher.publish(velocity);VelocityPublisher;
+
             }
+            else if (cudaMethod == 3)
+            {
+                //my method
+
+                FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,8,8,8);
+
+            }
+            else goto Conventional;
 
         }
         else
         {
+            Conventional:
 
          imView = imCurr.clone();
 
@@ -249,7 +254,7 @@ private:
                 {
                 startPos = cv::Point2i(n*(samplePointSize)+scanRadius,m*(samplePointSize)+scanRadius);
                 if (useCuda)
-                    absDiffsMat_g = cv::cuda::GpuMat(scanDiameter,scanDiameter,CV_32S);
+                    absDiffsMat_g = cv::gpu::GpuMat(scanDiameter,scanDiameter,CV_32S);
                 else
                     absDiffsMat = cv::Mat(scanDiameter,scanDiameter,CV_32S);
 
@@ -259,18 +264,24 @@ private:
                 {
 
                     for (int j = -scanRadius;j<=scanRadius;j++)
-                    {
+                    {                        
                         clock_t beginGPU = clock();
                         if (useCuda)
                         {
 
-                           cv::cuda::absdiff(imCurr_g(cv::Rect(startPos,cv::Size(samplePointSize,samplePointSize))),
+                           cv::gpu::absdiff(imCurr_g(cv::Rect(startPos,cv::Size(samplePointSize,samplePointSize))),
                                               imPrev_g(cv::Rect(startPos+cv::Point2i(j,i),
                                                        cv::Size(samplePointSize,samplePointSize))),
                                                                 imDiff_g);
-                           onePixel_g = cv::cuda::GpuMat(absDiffsMat_g,cv::Rect(cv::Point2i(scanRadius,scanRadius)+cv::Point2i(j,i),cv::Size(1,1)));
+                           cv::Rect ROI(cv::Point2i(scanRadius,scanRadius)+cv::Point2i(i,j),cv::Size(1,1));
+                           //ROS_INFO("ROI.x:%d, ROI.Y:%d, ROI.W:%d, ROI.H:%d",ROI.x, ROI.y,ROI.width, ROI.height );
+                           //ROS_INFO("Mat.W:%d, Mat.H:%d",absDiffsMat_g.size().width, absDiffsMat_g.size().height );
 
-                           onePixel_g.setTo(cv::Scalar(cv::sum(cv::Mat(imDiff_g))));
+                           onePixel_g = cv::gpu::GpuMat(absDiffsMat_g,ROI);
+                           onePixel_g.setTo(cv::Scalar(cv::gpu::sum(imDiff_g)));
+                           //onePixel_g = cv::gpu::GpuMat(absDiffsMat_g,cv::Rect(cv::Point2i(scanRadius,scanRadius)+cv::Point2i(j,i),cv::Size(1,1)));
+
+                           //onePixel_g.setTo(cv::Scalar(cv::sum(cv::Mat(imDiff_g))));
 
 
                         }
@@ -287,22 +298,28 @@ private:
                         clock_t endGPU = clock();
                         double elapsed_secs = double(endGPU - beginGPU) / CLOCKS_PER_SEC;
                         if (DEBUG)
-                             ROS_INFO("time : %f msec",elapsed_secs*1000);
-
-                       //absDiffsArray[index] = cv::sum(imDiff)[0];
-                        //locations[index].value = absDiffsArray[index];
-                        //locations[index].location = cv::Point2i(j,i);
+                             ROS_INFO("calc time : %f msec",elapsed_secs*1000);
                         index++;
                     }
                 }
+                clock_t beginGPU = clock();
                 double min, max;
                 cv::Point min_loc, max_loc;
-                cv::minMaxLoc(absDiffsMat, &min, &max, &min_loc, &max_loc);
+                if (useCuda)
+                {
+                    cv::gpu::minMaxLoc(absDiffsMat_g, &min, &max, &min_loc, &max_loc);
+                }
+                else
+                {
+                    cv::minMaxLoc(absDiffsMat, &min, &max, &min_loc, &max_loc);
+                }
                 xHist[min_loc.x]++;
                 yHist[min_loc.y]++;
-                //ROS_INFO("x = %d; y = %d\n",min_loc.x,min_loc.y);
-                //cv::max() absDiffsMat
-                //int bestIndex = std::distance(absDiffsArray, std::max_element(absDiffsArray, absDiffsArray + scanCount));
+                clock_t endGPU = clock();
+                double elapsed_secs = double(beginGPU-endGPU) / CLOCKS_PER_SEC;
+                if (DEBUG)
+                ROS_INFO("Hist : %f msec", elapsed_secs*1000);
+
                 if (gui)
                     cv::line(imView,
                          startPos+cv::Point2i(samplePointSize/2,samplePointSize/2),
@@ -438,7 +455,7 @@ private:
                 cv::Point2f u(flowx(y, x), flowy(y, x));
                 cv::line(imView,
                      startPos+cv::Point2i(samplePointSize/2,samplePointSize/2),
-                     startPos+cv::Point2i(samplePointSize/2,samplePointSize/2)+cv::Point2i(u),
+                     startPos+cv::Point2i(samplePointSize/2,samplePointSize/2)+cv::Point2i(u.x,u.y),
                      cv::Scalar(255));
 
             }
@@ -446,10 +463,10 @@ private:
         dst = imView;
     }
 
-    void showFlow(const char* name, const cv::cuda::GpuMat& d_flow)
+    void showFlow(const char* name, const cv::gpu::GpuMat& d_flow)
     {
-        cv::cuda::GpuMat planes[2];
-        cv::cuda::split(d_flow, planes);
+        cv::gpu::GpuMat planes[2];
+        cv::gpu::split(d_flow, planes);
 
         cv::Mat flowx(planes[0]);
         cv::Mat flowy(planes[1]);
@@ -470,7 +487,7 @@ private:
         cv::waitKey(10);
     }
 
-    void showFlow(const char* name, const cv::cuda::GpuMat& d_flow_x, const cv::cuda::GpuMat& d_flow_y)
+    void showFlow(const char* name, const cv::gpu::GpuMat& d_flow_x, const cv::gpu::GpuMat& d_flow_y)
     {
         cv::Mat flowx(d_flow_x);
         cv::Mat flowy(d_flow_y);
@@ -495,29 +512,30 @@ private:
         cv::waitKey(10);
     }
 
-    int getHistMaxGPU(cv::cuda::GpuMat input)
+    int getHistMaxGPU(cv::gpu::GpuMat input)
     {
-        cv::cuda::GpuMat inputConv;
+        cv::gpu::GpuMat inputConv;
          input.convertTo(inputConv,CV_8UC1,1,scanRadius);
-         cv::cuda::GpuMat Hist(cv::Scalar(0));
+         cv::gpu::GpuMat Hist;
+         Hist.setTo(cv::Scalar(0));
          double min, max;
          cv::Point min_loc, max_loc;
-         cv::cuda::calcHist(inputConv,Hist);
-         cv::cuda::minMaxLoc(Hist, &min, &max, &min_loc, &max_loc);
+         cv::gpu::calcHist(inputConv,Hist);
+         cv::gpu::minMaxLoc(Hist, &min, &max, &min_loc, &max_loc);
          cv::imshow("hist",cv::Mat(Hist));
         return max_loc.x-scanRadius;
 
     }
 
-    void GpuSum(const cv::cuda::GpuMat& input, cv::cuda::GpuMat& output)
+    void GpuSum(const cv::gpu::GpuMat& input, cv::gpu::GpuMat& output)
     {
     output.setTo(cv::Scalar(0));
         for (int i = 0; i<input.rows;i++)
         {
             for (int j = 0; j< input.cols; j++)
             {
-                cv::cuda::GpuMat onePixel_g_t(input,cv::Rect(j,i,1,1));
-                cv::cuda::add(onePixel_g_t,output,output);
+                cv::gpu::GpuMat onePixel_g_t(input,cv::Rect(j,i,1,1));
+                cv::gpu::add(onePixel_g_t,output,output);
             }
         }
         return;
@@ -526,7 +544,7 @@ private:
 
     /*int getHistMax(cv::Mat input)
     {
-        cv::cuda::cal
+        cv::gpu::cal
 
         for (int i = 0;i<scanDiameter;i++)
         {
@@ -549,18 +567,18 @@ private:
     cv::Mat imDiff;
     cv::Mat imPrev;
 
-    cv::cuda::GpuMat imCurr_g;
-    cv::cuda::GpuMat imPrev_g;
-    cv::cuda::GpuMat imDiff_g;
-    cv::cuda::GpuMat flow_g;
-    cv::cuda::GpuMat absDiffsMat_g;
-    cv::cuda::GpuMat onePixel_g;
-    cv::cuda::GpuMat onePixel_g_t;
-    cv::Ptr<cv::cuda::BroxOpticalFlow> brox;
-    cv::Ptr<cv::cuda::DensePyrLKOpticalFlow> lk;
-    cv::Ptr<cv::cuda::FarnebackOpticalFlow> farn;
-    cv::Ptr<cv::cuda::OpticalFlowDual_TVL1> tvl1;
+    cv::gpu::GpuMat imCurr_g;
+    cv::gpu::GpuMat imPrev_g;
+    cv::gpu::GpuMat imDiff_g;
+    cv::gpu::GpuMat flowX_g;
+    cv::gpu::GpuMat flowY_g;
+    cv::gpu::GpuMat absDiffsMat_g;
+    cv::gpu::GpuMat onePixel_g;
+    cv::gpu::GpuMat onePixel_g_t;
+    cv::gpu::GpuMat buffer_g;
 
+
+    cv::gpu::FastOpticalFlowBM fastBM;
 
 
     cv::Mat imView;
