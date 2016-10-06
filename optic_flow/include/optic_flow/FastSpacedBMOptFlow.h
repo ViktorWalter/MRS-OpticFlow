@@ -6,6 +6,10 @@ void FastSpacedBMOptFlow(cv::gpu::GpuMat &imPrev, cv::gpu::GpuMat &imCurr,
                          cv::gpu::GpuMat &imOutX, cv::gpu::GpuMat &imOutY,
                          int blockSize,
                          int blockStep,
-                         int scanRadius);
+                         int scanRadius,
+                         signed char &outX,
+                         signed char &outY);
+
+void ResetCudaDevice();
 
 #endif  // FASTBMOF_H_

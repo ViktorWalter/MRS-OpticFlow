@@ -5,6 +5,8 @@
 #include <cuda_runtime.h>
 #include <opencv2/gpu/gpumat.hpp>
 
+#define arraySize 20
+
 static inline void _safe_cuda_call(cudaError err, const char* msg, const char* file_name, const int line_number)
 {
     if(err!=cudaSuccess)
@@ -20,8 +22,8 @@ static inline void _safe_cuda_call(cudaError err, const char* msg, const char* f
 
 __global__ void _FastSpacedBMOptFlow_kernel(unsigned char* input_1,
                                     unsigned char* input_2,
-                                    unsigned char* output_X,
-                                    unsigned char* output_Y,
+                                    signed char* output_X,
+                                    signed char* output_Y,
                                     int blockSize,
                                     int blockStep,
                                     int scanRadius,
@@ -29,7 +31,7 @@ __global__ void _FastSpacedBMOptFlow_kernel(unsigned char* input_1,
                                     int height)
 {
     int scanDiameter = scanRadius*2+1;
-    __shared__ int abssum[20][20];
+    __shared__ int abssum[arraySize][arraySize];
 
     if( (blockIdx.x * (blockSize + 1+scanRadius*2) < width) && (blockIdx.y * (blockSize + 1+scanRadius*2)) < height )
     {
@@ -49,8 +51,8 @@ __global__ void _FastSpacedBMOptFlow_kernel(unsigned char* input_1,
             }
 
             __syncthreads();
-            __shared__ int minval[20];
-            char minX[20];
+            __shared__ int minval[arraySize];
+            char minX[arraySize];
             char minY;
 
             if (threadIdx.y == 0)
@@ -94,11 +96,41 @@ __global__ void _FastSpacedBMOptFlow_kernel(unsigned char* input_1,
 
 }
 
-__global__ void _HistogramMaximum(char* input_1,
-                                    char* value)
+__global__ void _HistogramMaximum(signed char* input_1,
+                                  int scanRadius,
+                                  signed char* value)
 {
-    __shared__
+    __shared__ int Histogram[arraySize];
 
+    if ((threadIdx.x < arraySize) && (threadIdx.y == 0))
+        Histogram[threadIdx.x] = 0;
+
+    __syncthreads();
+    Histogram[input_1[blockDim.y*threadIdx.y+threadIdx.x]+scanRadius]++;
+
+    __syncthreads();
+
+    if ( (threadIdx.y == 0) && (threadIdx.x == 0))
+    {
+        int MaxIndex = 0;
+        char  MaxVal = 0;
+        for (int i=1;i<blockDim.y;i++)
+        {
+            if (MaxVal < Histogram[i])
+            {
+                MaxVal = Histogram[i];
+                MaxIndex = i;
+            }
+        }
+        *value = MaxIndex - scanRadius;
+    }
+
+}
+
+void ResetCudaDevice()
+{
+
+    SAFE_CALL(cudaDeviceReset(),"Killing previous kernels Failed!");
 }
 
 void FastSpacedBMOptFlow(cv::gpu::GpuMat &imPrev, cv::gpu::GpuMat &imCurr,
@@ -106,9 +138,10 @@ void FastSpacedBMOptFlow(cv::gpu::GpuMat &imPrev, cv::gpu::GpuMat &imCurr,
                          int blockSize,
                          int blockStep,
                          int scanRadius,
-                         char &outX,
-                         char &outY)
+                         signed char &outX,
+                         signed char &outY)
 {
+
     if (imPrev.size() != imCurr.size())
     {
         std::fprintf(stderr,"Input images do not match in sizes!");
@@ -133,30 +166,55 @@ void FastSpacedBMOptFlow(cv::gpu::GpuMat &imPrev, cv::gpu::GpuMat &imCurr,
 
     unsigned char* pi1 = (unsigned char*)imPrev.data;
     unsigned char* pi2 = (unsigned char*)imCurr.data;
-    unsigned char* po1 = (unsigned char*)imOutX.data;
-    unsigned char* po2 = (unsigned char*)imOutY.data;
+    signed char* po1 = (signed char*)imOutX.data;
+    signed char* po2 = (signed char*)imOutY.data;
 
 
     const dim3 block(scanDiameter, scanDiameter);
     const dim3 grid((imPrev.cols)/blockszX, (imPrev.rows)/blockszY);
 
+    std::fprintf(stderr,"OptFlow Kernel:\n");
+
     _FastSpacedBMOptFlow_kernel<<<grid,block>>>(pi1,pi2,po1,po2,
                                                 blockSize,blockStep,scanRadius,
                                                 imCurr.cols, imCurr.rows);
 
-    char* outX_g;
-    char* outY_g;
-    cudaMalloc((void**)&outX_g, sizeof(char));
-    cudaMalloc((void**)&outY_g, sizeof(char));
+    signed char* outX_l;
+    signed char* outY_l;
 
-    _HistogramMaximum<<<1,scanDiameter>>>(po1,outX_g,outX_g);
+    cudaMallocHost((void**)&outX_l,1);
+    cudaMallocHost((void**)&outY_l,1);
+
+    signed char* outX_g;
+    signed char* outY_g;
+    cudaMalloc((void**)&outX_g, 1);
+    cudaMalloc((void**)&outY_g, 1);
+
+    std::fprintf(stderr,"Histogram Kernel:\n");
+
+    std::fprintf(stderr,"X:\n");
+    _HistogramMaximum<<<1,block>>>(po1,scanRadius,outX_g);
+    std::fprintf(stderr,"Y:\n");
+    _HistogramMaximum<<<1,block>>>(po2,scanRadius,outY_g);
 
 
+    std::fprintf(stderr,"Copying to Memory:\n");
+    memcpy(outX_l,outX_g,1);
+    memcpy(outY_l,outY_g,1);
 
-    cudaMemcpy(outX,outX_g,sizeof(char),cudaMemcpyDeviceToHost);
-    cudaMemcpy(outY,outY_g,sizeof(char),cudaMemcpyDeviceToHost);
+    cudaFree(outX_g);
+    cudaFree(outY_g);
 
+    std::fprintf(stderr,"Synchronizing:\n");
    SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed");
+
+   outX = *outX_l;
+   outY = *outY_l;
+
+   cudaFreeHost(outX_l);
+   cudaFreeHost(outY_l);
+
+   std::fprintf(stderr,"Kernel returning\n");
 
 
 }

@@ -87,7 +87,7 @@ include_directories(
 )
 
 ## Declare a C++ library
-#cuda_compile(fsbmof STATIC src/FastSpacedBMOptFlow.cu)
+cuda_compile(fsbmof STATIC src/FastSpacedBMOptFlow.cu)
 cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu)
 
 ## Declare a C++ executable

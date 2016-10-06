@@ -70,6 +70,13 @@ public:
         imPrev = cv::Mat(frameSize,frameSize,CV_8UC1);
         imPrev = cv::Scalar(0);
 
+        if (useCuda)
+        {
+            ResetCudaDevice();
+            imPrev_g.create(imPrev.size(),imPrev.type());
+            imCurr_g.create(imCurr.size(),imCurr.type());
+        }
+
 
         begin = ros::Time::now();
 
@@ -140,14 +147,19 @@ private:
             midPoint = cv::Point2i((frameSize/2),(frameSize/2));
         }
 
-        cv::cvtColor(imOrigScaled(frameRect),imCurr,CV_RGB2GRAY);
 
-        if (useCuda || (cudaMethod<4))
+
+        cv::cvtColor(imOrigScaled(frameRect),imCurr,CV_RGB2GRAY);
+        ROS_INFO("Here");
+
+        if (useCuda && (cudaMethod<4))
         {
-            imPrev_g = cv::gpu::GpuMat(imPrev);
-            imCurr_g = cv::gpu::GpuMat(imCurr);
-            //flow_g = cv::gpu::GpuMat(imPrev.size(), CV_32FC2);
-            onePixel_g = cv::gpu::GpuMat(1,1,CV_32SC1);
+
+            imPrev_g.upload(imPrev);
+            imCurr_g.upload(imCurr);
+
+
+            ROS_INFO("Here");
 
             ROS_INFO("method: %d",cudaMethod);
             if (cudaMethod == 0)
@@ -221,8 +233,28 @@ private:
             else if (cudaMethod == 3)
             {
                 //my method
+                signed char outputX;
+                signed char outputY;
 
-                FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,8,8,8);
+                FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,8,8,8,
+                                    outputX,
+                                    outputY);
+
+                //cv::Point2f refined = Refine(imCurr,imPrev,cv::Point2i(outputX,outputY),2);
+
+                ROS_INFO("vxr = %d; vyr=%d",outputX,outputY);
+                double vxm, vym, vam;
+                vxm = outputX*(currentRange/fx)/dur.toSec();
+                vym = outputY*(currentRange/fy)/dur.toSec();
+                vam = sqrt(vxm*vxm+vym*vym);
+                ROS_INFO("vxm = %f; vym=%f; vam=%f",vxm,vym,vam );
+
+                geometry_msgs::Pose2D velocity;
+                velocity.x = vxm;
+                velocity.y = vym;
+                VelocityPublisher.publish(velocity);VelocityPublisher;
+
+
 
             }
 
