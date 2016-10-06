@@ -142,7 +142,7 @@ private:
 
         cv::cvtColor(imOrigScaled(frameRect),imCurr,CV_RGB2GRAY);
 
-        if (useCuda)
+        if (useCuda || (cudaMethod<4))
         {
             imPrev_g = cv::gpu::GpuMat(imPrev);
             imCurr_g = cv::gpu::GpuMat(imCurr);
@@ -225,12 +225,10 @@ private:
                 FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,8,8,8);
 
             }
-            else goto Conventional;
 
         }
         else
         {
-            Conventional:
 
          imView = imCurr.clone();
 

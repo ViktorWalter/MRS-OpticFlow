@@ -94,11 +94,20 @@ __global__ void _FastSpacedBMOptFlow_kernel(unsigned char* input_1,
 
 }
 
+__global__ void _HistogramMaximum(char* input_1,
+                                    char* value)
+{
+    __shared__
+
+}
+
 void FastSpacedBMOptFlow(cv::gpu::GpuMat &imPrev, cv::gpu::GpuMat &imCurr,
                          cv::gpu::GpuMat &imOutX, cv::gpu::GpuMat &imOutY,
                          int blockSize,
                          int blockStep,
-                         int scanRadius)
+                         int scanRadius,
+                         char &outX,
+                         char &outY)
 {
     if (imPrev.size() != imCurr.size())
     {
@@ -135,8 +144,17 @@ void FastSpacedBMOptFlow(cv::gpu::GpuMat &imPrev, cv::gpu::GpuMat &imCurr,
                                                 blockSize,blockStep,scanRadius,
                                                 imCurr.cols, imCurr.rows);
 
+    char* outX_g;
+    char* outY_g;
+    cudaMalloc((void**)&outX_g, sizeof(char));
+    cudaMalloc((void**)&outY_g, sizeof(char));
+
+    _HistogramMaximum<<<1,scanDiameter>>>(po1,outX_g,outX_g);
 
 
+
+    cudaMemcpy(outX,outX_g,sizeof(char),cudaMemcpyDeviceToHost);
+    cudaMemcpy(outY,outY_g,sizeof(char),cudaMemcpyDeviceToHost);
 
    SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed");
 
