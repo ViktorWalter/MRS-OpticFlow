@@ -2,8 +2,8 @@
 #define FASTBMOF_H_
 #include <opencv2/core.hpp>
 
-void FastSpacedBMOptFlow(cv::gpu::GpuMat &imPrev, cv::gpu::GpuMat &imCurr,
-                         cv::gpu::GpuMat &imOutX, cv::gpu::GpuMat &imOutY,
+void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
+                         cv::OutputArray _imOutX, cv::OutputArray _imOutY,
                          int blockSize,
                          int blockStep,
                          int scanRadius,

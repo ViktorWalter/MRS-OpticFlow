@@ -130,7 +130,7 @@ private:
         begin = ros::Time::now();
 
 
-        ROS_INFO("res: %dX%d",image->image.size().width,image->image.size().height);
+        //ROS_INFO("res: %dX%d",image->image.size().width,image->image.size().height);
 
         if (ScaleFactor != 1)
             cv::resize(image->image,imOrigScaled,cv::Size(image->image.size().width/ScaleFactor,image->image.size().height/ScaleFactor));
@@ -150,7 +150,7 @@ private:
 
 
         cv::cvtColor(imOrigScaled(frameRect),imCurr,CV_RGB2GRAY);
-        ROS_INFO("Here");
+        //ROS_INFO("Here");
 
         if (useCuda && (cudaMethod<4))
         {
@@ -159,9 +159,9 @@ private:
             imCurr_g.upload(imCurr);
 
 
-            ROS_INFO("Here");
+            //ROS_INFO("Here");
 
-            ROS_INFO("method: %d",cudaMethod);
+            //ROS_INFO("method: %d",cudaMethod);
             if (cudaMethod == 0)
             {
                 cv::gpu::GpuMat imPrev_gf;
@@ -239,6 +239,15 @@ private:
                 FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,8,8,8,
                                     outputX,
                                     outputY);
+
+                if (DEBUG)
+                {
+                    ROS_INFO("out: %dx%d",flowX_g.cols,flowX_g.rows);
+                    cv::imshow("main",cv::Mat(flowX_g));
+                    cv::waitKey(10);
+                }
+
+
 
                 //cv::Point2f refined = Refine(imCurr,imPrev,cv::Point2i(outputX,outputY),2);
 
