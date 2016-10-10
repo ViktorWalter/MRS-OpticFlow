@@ -34,9 +34,9 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
     __shared__ int abssum[arraySize][arraySize];
 
 
-    if( ((blockIdx.x+1) * (blockSize + 1+scanRadius*2) < width)
+    if( ((blockIdx.x+1) * (blockSize + blockStep) +(scanRadius)< width)
             &&
-            ((blockIdx.y+1) * (blockSize + 1+scanRadius*2)) < height )
+            ((blockIdx.y+1) * (blockSize + blockStep)) +(scanRadius) < height )
     {
 
             for (int i=0;i<blockSize;i++)
@@ -44,10 +44,12 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
                 for (int j=0;j<blockSize;j++)
                 {
                     abssum[threadIdx.y][threadIdx.x]+=
-                            (abs(input_1((blockIdx.y + scanRadius + i),(blockIdx.x + scanRadius + j))
-                            -
-                            input_2((blockIdx.y + i + threadIdx.y),
-                                    (blockIdx.x + j + threadIdx.x))));
+                            (abs(
+                                 input_1(((blockIdx.y*(blockSize+blockStep)) + scanRadius + i),
+                                         ((blockIdx.x*(blockSize+blockStep)) + scanRadius + j))
+                                 -
+                                 input_2(((blockIdx.y*(blockSize+blockStep)) + i + threadIdx.y),
+                                         ((blockIdx.x*(blockSize+blockStep)) + j + threadIdx.x))));
                 }
 
             }
@@ -170,15 +172,16 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     }
 
     int scanDiameter = 2*scanRadius+1;
-    int blockszX = scanDiameter+blockSize;
-    int blockszY = scanDiameter+blockSize;
+    int blockszX = blockStep+blockSize;
+    int blockszY = blockStep+blockSize;
 
     const dim3 block(scanDiameter, scanDiameter);
-    const dim3 grid((imPrev.cols)/blockszX, (imPrev.rows)/blockszY);
+    const dim3 grid((imPrev.cols-scanRadius)/blockszX,
+                     (imPrev.rows-scanRadius)/blockszY);
 
-    _imOutX.create(grid.x,grid.y,CV_8UC1);
+    _imOutX.create(grid.x,grid.y,CV_8SC1);
     const cv::gpu::GpuMat imOutX = _imOutX.getGpuMat();
-    _imOutY.create(grid.x,grid.y,CV_8UC1);
+    _imOutY.create(grid.x,grid.y,CV_8SC1);
     const cv::gpu::GpuMat imOutY = _imOutY.getGpuMat();
 
     //_CopyMatrix<<<1,blockM>>>(imPrev,imOutX,blockSize,imPrev.cols,imPrev.rows);
