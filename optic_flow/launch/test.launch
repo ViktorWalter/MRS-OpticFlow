@@ -6,6 +6,9 @@
 	<arg name="cudaMethod" default="0"/>
 	<arg name="camera" default="mv_25001879"/>
 	<group ns="$(arg uav_name)">
+        <arg name="SamplePointSize" default="8"/>
+        <arg name="ScanRadius" default="4"/>
+        <arg name="StepSize" default="0"/>
 
 		<node name="teraranger" pkg="terarangerone" type="terarangerone_node" output="screen">		
 		<param name="Mode" value="2"/>
@@ -51,8 +54,9 @@
 			<param name="DEBUG"		type="bool" value="$(arg DEBUG)"/> 
 			<param name="gui"             type="bool" value="$(arg gui)"/>
 		 	<param name="FrameSize"       type="int" value="240"/>
-		 	<param name="SamplePointSize" type="int" value="8"/>
-                        <param name="ScanRadius"    type="int" value="4"/>
+                        <param name="SamplePointSize" type="int" value="$(arg SamplePointSize)"/>
+                        <param name="ScanRadius"    type="int" value="$(arg ScanRadius)"/>
+                        <param name="StepSize"	type="int" value="$(arg StepSize)"/>
                         <rosparam file="$(find optic_flow)/yaml/ost.yaml"/>
         		<param name="useCuda"		type="bool" value="$(arg useCuda)"/>
 			<param name="cudaMethod"	type="int" value="$(arg cudaMethod)"/>
