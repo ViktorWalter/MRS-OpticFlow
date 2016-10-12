@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(optic_flow)
 
 FILE(GLOB_RECURSE HEADER_FILES include *.h)
+FILE(GLOB_RECURSE LAUNCHER_FILES include *.launch)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -90,7 +91,7 @@ include_directories(
 
 ## Declare a C++ library
 cuda_compile(fsbmof STATIC src/FastSpacedBMOptFlow.cu)
-cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu ${HEADER_FILES})
+cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu)
 
 ## Declare a C++ executable
 add_executable(optic_flow_node src/optic_flow.cpp)
@@ -98,6 +99,9 @@ add_executable(optic_flow_node src/optic_flow.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(optic_flow_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+
+add_custom_target(headers SOURCES ${HEADER_FILES} ${LAUNCHER_FILES})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(optic_flow_node
