@@ -249,8 +249,11 @@ private:
                 {
                     ROS_INFO("out: %dx%d",flowX_g.cols,flowX_g.rows);
                     //imView = cv::Mat(imCurr_g);
-                    showFlow("TVL1", flowX_g, flowY_g, outputX, outputY);
+
+
                 }
+                if (gui)
+                    showFlow("TVL1", flowX_g, flowY_g, outputX, outputY);
 
 
 

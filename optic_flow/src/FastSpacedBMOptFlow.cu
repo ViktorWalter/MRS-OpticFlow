@@ -34,9 +34,9 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
     __shared__ int abssum[arraySize][arraySize];
 
 
-    if( (((blockIdx.x+1) * (blockSize + blockStep) +(2*scanRadius) -blockStep) < width)
+    if( (((blockIdx.x+1) * (blockSize + blockStep) +(2*scanRadius) ) <= width)
             &&
-            ( ((blockIdx.y+1) * (blockSize + blockStep) +(2*scanRadius) -blockStep) < height ) )
+            ( ((blockIdx.y+1) * (blockSize + blockStep) +(2*scanRadius) ) <= height ) )
     {
         abssum[threadIdx.y][threadIdx.x] = 0;
 
@@ -114,7 +114,9 @@ __global__ void _HistogramMaximum(const cv::gpu::PtrStepSz<signed char> input,
         Histogram[threadIdx.x] = 0;
     __syncthreads();
 
-    atomicAdd(&Histogram[input(threadIdx.y,threadIdx.x)+scanRadius],1);
+    atomicAdd(&(Histogram[input(threadIdx.y,threadIdx.x)+scanRadius]),1);
+
+    //Histogram[input(threadIdx.y,threadIdx.x)+scanRadius]++;
     __syncthreads();
 
 
@@ -203,13 +205,15 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     _HistogramMaximum<<<1,grid,1>>>(imOutX,scanRadius,outX_g);
     _HistogramMaximum<<<1,grid,1>>>(imOutY,scanRadius,outY_g);
 
+    SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 2");
+
     SAFE_CALL(cudaMemcpy(&outX_l,outX_g,sizeof(signed char),cudaMemcpyDeviceToHost),"Memcpy to host failed");
     SAFE_CALL(cudaMemcpy(&outY_l,outY_g,sizeof(signed char),cudaMemcpyDeviceToHost),"Memcpy to host failed");
 
     cudaFree(outX_g);
     cudaFree(outY_g);
 
-   SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 2");
+   SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 3");
 
    outX = outX_l;
    outY = outY_l;
