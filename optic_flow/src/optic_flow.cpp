@@ -242,16 +242,14 @@ private:
 
                 FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,samplePointSize,stepSize,8,
                                     outputX,
-                                    outputY,
-                                    outXconv,
-                                    outYconv
+                                    outputY
                                     );
 
                 if (DEBUG)
                 {
                     ROS_INFO("out: %dx%d",flowX_g.cols,flowX_g.rows);
                     //imView = cv::Mat(imCurr_g);
-                    showFlow("TVL1", outXconv, outYconv, outputX, outputY);
+                    showFlow("TVL1", flowX_g, flowY_g, outputX, outputY);
                 }
 
 
@@ -536,8 +534,10 @@ private:
         cv::waitKey(10);
     }
 
-    void showFlow(const char* name, const cv::Mat flowx, const cv::Mat flowy, signed char vXin, signed char vYin)
+    void showFlow(const char* name, const cv::gpu::GpuMat flowx_g, const cv::gpu::GpuMat flowy_g, signed char vXin, signed char vYin)
     {
+        cv::Mat flowx = cv::Mat(flowx_g);
+        cv::Mat flowy = cv::Mat(flowy_g);
 
         cv::Mat out;
         drawOpticalFlow(flowx, flowy, out, 10, stepSize);
