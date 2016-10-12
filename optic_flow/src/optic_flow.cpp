@@ -1,5 +1,4 @@
 #define measureDistance 0.5
-#define stepSize 0
 
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
@@ -41,6 +40,7 @@ public:
         private_node_handle.param("FrameSize", frameSize, int(64));
         private_node_handle.param("SamplePointSize", samplePointSize, int(8));
         private_node_handle.param("ScanRadius", scanRadius, int(8));
+        private_node_handle.param("StepSize", stepSize, int(0));
 
         private_node_handle.param("gui", gui, bool(false));
         private_node_handle.param("publish", publish, bool(true));
@@ -658,6 +658,7 @@ private:
     int scanRadius;
     int scanDiameter;
     int scanCount;
+    int stepSize;
 
     double cx,cy,fx,fy,s;
 
