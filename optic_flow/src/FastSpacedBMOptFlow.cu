@@ -5,7 +5,7 @@
 #include <cuda_runtime.h>
 #include <opencv2/gpu/gpumat.hpp>
 
-#define arraySize 20
+#define arraySize 17
 
 static inline void _safe_cuda_call(cudaError err, const char* msg, const char* file_name, const int line_number)
 {
@@ -34,27 +34,30 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
     __shared__ int abssum[arraySize][arraySize];
 
 
-    if( ((blockIdx.x+1) * (blockSize + blockStep) +(scanRadius)< width)
+    if( (((blockIdx.x+1) * (blockSize + blockStep) +(2*scanRadius) -blockStep) < width)
             &&
-            ((blockIdx.y+1) * (blockSize + blockStep)) +(scanRadius) < height )
+            ( ((blockIdx.y+1) * (blockSize + blockStep) +(2*scanRadius) -blockStep) < height ) )
     {
+        abssum[threadIdx.y][threadIdx.x] = 0;
 
             for (int i=0;i<blockSize;i++)
             {
                 for (int j=0;j<blockSize;j++)
                 {
-                    abssum[threadIdx.y][threadIdx.x]+=
-                            (abs(
+                    atomicAdd(&(abssum[threadIdx.y][threadIdx.x]),
+                            abs(
                                  input_1(((blockIdx.y*(blockSize+blockStep)) + scanRadius + i),
                                          ((blockIdx.x*(blockSize+blockStep)) + scanRadius + j))
                                  -
                                  input_2(((blockIdx.y*(blockSize+blockStep)) + i + threadIdx.y),
-                                         ((blockIdx.x*(blockSize+blockStep)) + j + threadIdx.x))));
+                                         ((blockIdx.x*(blockSize+blockStep)) + j + threadIdx.x)))
+                            );
                 }
 
             }
 
             __syncthreads();
+
             __shared__ int minval[arraySize];
             __shared__ signed char minX[arraySize];
             signed char minY;
@@ -68,7 +71,7 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
                     if (minval[threadIdx.x] > abssum[threadIdx.x][i])
                     {
                         minval[threadIdx.x] = abssum[threadIdx.x][i];
-                        minX[threadIdx.x] = threadIdx.x-scanRadius;
+                        minX[threadIdx.x] = i-scanRadius;
                     }
                 }
             }
@@ -107,12 +110,11 @@ __global__ void _HistogramMaximum(const cv::gpu::PtrStepSz<signed char> input,
 
     __shared__ int Histogram[arraySize];
 
-    if ((threadIdx.x < arraySize) && (threadIdx.y == 0))
+    if ((threadIdx.x < blockDim.y) && (threadIdx.y == 0))
         Histogram[threadIdx.x] = 0;
-
-
     __syncthreads();
-    Histogram[input(threadIdx.y,threadIdx.x)+scanRadius]++;
+
+    atomicAdd(&Histogram[input(threadIdx.y,threadIdx.x)+scanRadius],1);
     __syncthreads();
 
 
@@ -176,8 +178,8 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     int blockszY = blockStep+blockSize;
 
     const dim3 block(scanDiameter, scanDiameter);
-    const dim3 grid((imPrev.cols-scanRadius)/blockszX,
-                     (imPrev.rows-scanRadius)/blockszY);
+    const dim3 grid((imPrev.cols-scanRadius*2)/blockszX,(imPrev.rows-scanRadius*2)/blockszY);
+    //const dim3 grid(1,1);
 
     _imOutX.create(grid.x,grid.y,CV_8SC1);
     const cv::gpu::GpuMat imOutX = _imOutX.getGpuMat();
@@ -185,7 +187,7 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     const cv::gpu::GpuMat imOutY = _imOutY.getGpuMat();
 
     //_CopyMatrix<<<1,blockM>>>(imPrev,imOutX,blockSize,imPrev.cols,imPrev.rows);
-    _FastSpacedBMOptFlow_kernel<<<grid,block>>>(imPrev,imCurr,imOutX,imOutY,
+    _FastSpacedBMOptFlow_kernel<<<grid,block,0>>>(imPrev,imCurr,imOutX,imOutY,
                                                 blockSize,blockStep,scanRadius,
                                                 imCurr.cols, imCurr.rows);
 
@@ -197,8 +199,9 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     cudaMalloc(&outX_g, sizeof(signed char));
     cudaMalloc(&outY_g, sizeof(signed char));
 
-    _HistogramMaximum<<<1,grid>>>(imOutX,scanRadius,outX_g);
-    _HistogramMaximum<<<1,grid>>>(imOutY,scanRadius,outY_g);
+    SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 1");
+    _HistogramMaximum<<<1,grid,1>>>(imOutX,scanRadius,outX_g);
+    _HistogramMaximum<<<1,grid,1>>>(imOutY,scanRadius,outY_g);
 
     SAFE_CALL(cudaMemcpy(&outX_l,outX_g,sizeof(signed char),cudaMemcpyDeviceToHost),"Memcpy to host failed");
     SAFE_CALL(cudaMemcpy(&outY_l,outY_g,sizeof(signed char),cudaMemcpyDeviceToHost),"Memcpy to host failed");
@@ -206,11 +209,9 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     cudaFree(outX_g);
     cudaFree(outY_g);
 
-   SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed");
+   SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 2");
 
    outX = outX_l;
    outY = outY_l;
-
-
 
 }

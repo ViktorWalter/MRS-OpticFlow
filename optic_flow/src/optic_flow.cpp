@@ -237,15 +237,21 @@ private:
                 signed char outputX;
                 signed char outputY;
 
+                cv::Mat outXconv;
+                cv::Mat outYconv;
+
                 FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,samplePointSize,stepSize,8,
                                     outputX,
-                                    outputY);
+                                    outputY,
+                                    outXconv,
+                                    outYconv
+                                    );
 
                 if (DEBUG)
                 {
                     ROS_INFO("out: %dx%d",flowX_g.cols,flowX_g.rows);
                     //imView = cv::Mat(imCurr_g);
-                    showFlow("TVL1", flowX_g, flowY_g, outputX, outputY);
+                    showFlow("TVL1", outXconv, outYconv, outputX, outputY);
                 }
 
 
@@ -306,26 +312,6 @@ private:
                     for (int j = -scanRadius;j<=scanRadius;j++)
                     {                        
                         clock_t beginGPU = clock();
-                        if (useCuda)
-                        {
-
-                           cv::gpu::absdiff(imCurr_g(cv::Rect(startPos,cv::Size(samplePointSize,samplePointSize))),
-                                              imPrev_g(cv::Rect(startPos+cv::Point2i(j,i),
-                                                       cv::Size(samplePointSize,samplePointSize))),
-                                                                imDiff_g);
-                           cv::Rect ROI(cv::Point2i(scanRadius,scanRadius)+cv::Point2i(i,j),cv::Size(1,1));
-                           //ROS_INFO("ROI.x:%d, ROI.Y:%d, ROI.W:%d, ROI.H:%d",ROI.x, ROI.y,ROI.width, ROI.height );
-                           //ROS_INFO("Mat.W:%d, Mat.H:%d",absDiffsMat_g.size().width, absDiffsMat_g.size().height );
-
-                           onePixel_g = cv::gpu::GpuMat(absDiffsMat_g,ROI);
-                           onePixel_g.setTo(cv::Scalar(cv::gpu::sum(imDiff_g)));
-                           //onePixel_g = cv::gpu::GpuMat(absDiffsMat_g,cv::Rect(cv::Point2i(scanRadius,scanRadius)+cv::Point2i(j,i),cv::Size(1,1)));
-
-                           //onePixel_g.setTo(cv::Scalar(cv::sum(cv::Mat(imDiff_g))));
-
-
-                        }
-                        else
                         {    cv::absdiff(
                                     imCurr(cv::Rect(startPos,cv::Size(samplePointSize,samplePointSize))),
                                     imPrev(cv::Rect(startPos+cv::Point2i(j,i),
@@ -345,11 +331,6 @@ private:
                 clock_t beginGPU = clock();
                 double min, max;
                 cv::Point min_loc, max_loc;
-                if (useCuda)
-                {
-                    cv::gpu::minMaxLoc(absDiffsMat_g, &min, &max, &min_loc, &max_loc);
-                }
-                else
                 {
                     cv::minMaxLoc(absDiffsMat, &min, &max, &min_loc, &max_loc);
                 }
@@ -512,10 +493,10 @@ private:
         {
             for (int x = 0; x < flowx.cols; x++)
             {
-                if (abs(flowx(y, x) > scanRadius) || (flowy(y, x)> scanRadius))
+                if ((abs(flowx(y, x)) > scanRadius) || (abs(flowy(y, x))> scanRadius))
                 {
                     ROS_WARN("Flow out of bounds: X:%d, Y:%d",flowx(y, x),flowy(y, x));
-                    continue;
+                    //continue;
                 }
                 cv::Point2i startPos(x*(step+samplePointSize)+(samplePointSize/2+scanRadius),
                                      y*(step+samplePointSize)+(samplePointSize/2+scanRadius));
@@ -555,17 +536,15 @@ private:
         cv::waitKey(10);
     }
 
-    void showFlow(const char* name, const cv::gpu::GpuMat& d_flow_x, const cv::gpu::GpuMat& d_flow_y, signed char vXin, signed char vYin)
+    void showFlow(const char* name, const cv::Mat flowx, const cv::Mat flowy, signed char vXin, signed char vYin)
     {
-        cv::Mat flowx(d_flow_x);
-        cv::Mat flowy(d_flow_y);
 
         cv::Mat out;
         drawOpticalFlow(flowx, flowy, out, 10, stepSize);
 
         cv::line(imView,
                   midPoint,
-                  midPoint+cv::Point2i((int)(vXin*4),(int)(vYin*4)),
+                  midPoint+cv::Point2i(((int)vXin*4),((int)vYin*4)),
                   cv::Scalar(255),2);
 
         cv::imshow("Main", imView);
