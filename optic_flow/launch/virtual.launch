@@ -24,9 +24,13 @@
 		 	<param name="gui"             type="bool" value="$(arg gui)"/>
 		 	<param name="publish"         type="bool" value="$(arg publish)"/>
                         <param name="FrameSize"       type="int" value="240"/>
+
                         <param name="SamplePointSize" type="int" value="$(arg SamplePointSize)"/>
                         <param name="ScanRadius"    type="int" value="$(arg ScanRadius)"/>
+                        <param name="StepSize"	type="int" value="$(arg StepSize)"/>
+
         		<rosparam file="$(find optic_flow)/yaml/ost.yaml"/>
+
         		
         		<param name="ScaleFactor"	type="int" value="2"/>
         		
@@ -36,7 +40,6 @@
 
                         <param name="useCuda"		type="bool" value="$(arg useCuda)"/>
                         <param name="cudaMethod"	type="int" value="$(arg cudaMethod)"/>
-                        <param name="StepSize"	type="int" value="$(arg StepSize)"/>
                 </node>
 	  	
                 <node pkg="rosbag" type="record" name="recorder"  args="/uav4/mbzirc_odom/precise_odom /optFlow/velocity /optFlow/velocity -O /home/viktor/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/outputs/SpeedCompareB$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize).bag" />

@@ -240,7 +240,7 @@ private:
                 cv::Mat outXconv;
                 cv::Mat outYconv;
 
-                FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,samplePointSize,stepSize,8,
+                FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,samplePointSize,stepSize,scanRadius,
                                     outputX,
                                     outputY
                                     );
