@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(optic_flow)
 
+FILE(GLOB_RECURSE HEADER_FILES include *.h)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -88,7 +90,7 @@ include_directories(
 
 ## Declare a C++ library
 cuda_compile(fsbmof STATIC src/FastSpacedBMOptFlow.cu)
-cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu)
+cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu ${HEADER_FILES} )
 
 ## Declare a C++ executable
 add_executable(optic_flow_node src/optic_flow.cpp)
