@@ -18,6 +18,7 @@ BlockMethod::BlockMethod(int i_frameSize,
 
     maxSamplesSide = (frameSize-scanRadius*2)/(samplePointSize);
 
+    midPoint = cv::Point2i((frameSize/2),(frameSize/2));
 
     xHist = new int[scanDiameter];
     yHist = new int[scanDiameter];
@@ -114,7 +115,7 @@ cv::Point2f BlockMethod::processImage(cv::Mat imCurr,
     imPrev = imCurr.clone();
 }
 
-BlockMethod::Refine(cv::Mat imCurr, cv::Mat imPrev, cv::Point2i fullpixFlow, int passes){
+cv::Point2f BlockMethod::Refine(cv::Mat imCurr, cv::Mat imPrev, cv::Point2i fullpixFlow, int passes){
     cv::Mat imCurr2x = imCurr.clone();;
     cv::Mat imPrev2x = imPrev.clone();
     cv::Mat imDiff2x;

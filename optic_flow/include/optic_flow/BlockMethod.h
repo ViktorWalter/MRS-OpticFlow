@@ -2,6 +2,7 @@
 #define BLOCKMETHOD_H
 
 #include <cv_bridge/cv_bridge.h>
+#include <opencv2/highgui/highgui.hpp>
 #include "optic_flow/OpticFlowCalc.h"
 
 class BlockMethod: public OpticFlowCalc
@@ -15,6 +16,8 @@ class BlockMethod: public OpticFlowCalc
     cv::Mat imView;
     cv::Mat absDiffsMat;
     cv::Mat absDiffsMatSubpix;
+
+    cv::Point2i midPoint;
 
     int ScaleFactor;
 
@@ -43,9 +46,7 @@ class BlockMethod: public OpticFlowCalc
                 int scanCount,
                 int stepSize
                 );
-    cv::Point2f processImage(cv::Mat imCurr,
-                                                     bool gui,
-                                                     bool debug);
+    cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug);
 
 
 
