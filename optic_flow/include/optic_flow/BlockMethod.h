@@ -2,7 +2,7 @@
 #define BLOCKMETHOD_H
 
 #include <cv_bridge/cv_bridge.h>
-#include "OpticFlowCalc.h"
+#include "optic_flow/OpticFlowCalc.h"
 
 class BlockMethod: public OpticFlowCalc
 {    
@@ -41,8 +41,12 @@ class BlockMethod: public OpticFlowCalc
                 int scanRadius,
                 int scanDiameter,
                 int scanCount,
-                int stepSize,
+                int stepSize
                 );
+    cv::Point2f processImage(cv::Mat imCurr,
+                                                     bool gui,
+                                                     bool debug);
+
 
 
 
