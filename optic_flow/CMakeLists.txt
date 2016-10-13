@@ -96,6 +96,8 @@ cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu)
 ## Declare a C++ executable
 add_executable(optic_flow_node src/optic_flow.cpp)
 
+add_executable(block_method src/BlockMethod.cpp)
+
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(optic_flow_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
