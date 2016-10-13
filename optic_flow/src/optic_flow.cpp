@@ -5,7 +5,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/Range.h>
-#include <geometry_msgs/Pose2D.h>
+#include <geometry_msgs/Twist.h>
 using namespace std;
 #include <opencv2/gpu/gpu.hpp>
 //#include <opencv2/gpuoptflow.hpp>
@@ -71,6 +71,8 @@ public:
         imPrev = cv::Mat(frameSize,frameSize,CV_8UC1);
         imPrev = cv::Scalar(0);
 
+        prevRange = 0;
+
         if (useCuda)
         {
             ResetCudaDevice();
@@ -85,7 +87,7 @@ public:
 
         //image_transport::ImageTransport iTran(node);
 
-        VelocityPublisher = node.advertise<geometry_msgs::Pose2D>("/optFlow/velocity", 1);
+        VelocityPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity", 1);
         RangeSubscriber = node.subscribe(RangerPath,1,&OpticFlow::RangeCallback, this);
         if (ImgCompressed)
             ImageSubscriber = node.subscribe(ImgPath, 1, &OpticFlow::ProcessCompressed, this);
@@ -218,17 +220,18 @@ private:
                 //cv::Point2f refined = Refine(imCurr,imPrev,cv::Point2i(outputX,outputY),2);
 
                 //ROS_INFO("vxu = %d; vyu=%d",outputX,outputY);
-                ROS_INFO("vxr = %f; vyr=%f",outputX[0],outputY[0]);
+                //ROS_INFO("vxr = %f; vyr=%f",outputX[0],outputY[0]);
                 double vxm, vym, vam;
                 vxm = outputX[0]*(currentRange/fx)/dur.toSec();
                 vym = outputY[0]*(currentRange/fy)/dur.toSec();
                 vam = sqrt(vxm*vxm+vym*vym);
                 ROS_INFO("vxm = %f; vym=%f; vam=%f",vxm,vym,vam );
 
-                geometry_msgs::Pose2D velocity;
-                velocity.x = vxm;
-                velocity.y = vym;
-                VelocityPublisher.publish(velocity);VelocityPublisher;
+                geometry_msgs::Twist velocity;
+                velocity.linear.x = vxm;
+                velocity.linear.y = vym;
+                velocity.linear.z = Zvelocity;
+                VelocityPublisher.publish(velocity);
 
             }
             else if (cudaMethod == 3)
@@ -260,15 +263,17 @@ private:
                 //cv::Point2f refined = Refine(imCurr,imPrev,cv::Point2i(outputX,outputY),2);
 
                 ROS_INFO("vxr = %d; vyr=%d",outputX,outputY);
-                double vxm, vym, vam;
+                double vxm, vym, vzm, vam;
                 vxm = outputX*(currentRange/fx)/dur.toSec();
                 vym = outputY*(currentRange/fy)/dur.toSec();
                 vam = sqrt(vxm*vxm+vym*vym);
-                ROS_INFO("vxm = %f; vym=%f; vam=%f",vxm,vym,vam );
 
-                geometry_msgs::Pose2D velocity;
-                velocity.x = vxm;
-                velocity.y = vym;
+                ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
+
+                geometry_msgs::Twist velocity;
+                velocity.linear.x = vxm;
+                velocity.linear.y = vym;
+                velocity.linear.z = Zvelocity;
                 VelocityPublisher.publish(velocity);VelocityPublisher;
 
 
@@ -359,15 +364,16 @@ private:
 
         //ROS_INFO("vxu = %d; vyu=%d",outputX,outputY);
         ROS_INFO("vxr = %f; vyr=%f",refined.x,refined.y);
-        double vxm, vym, vam;
+        double vxm, vym, vzm, vam;
         vxm = refined.x*(currentRange/fx)/dur.toSec();
         vym = refined.y*(currentRange/fy)/dur.toSec();
         vam = sqrt(vxm*vxm+vym*vym);
-        ROS_INFO("vxm = %f; vym=%f; vam=%f",vxm,vym,vam );
+        ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
 
-        geometry_msgs::Pose2D velocity;
-        velocity.x = vxm;
-        velocity.y = vym;
+        geometry_msgs::Twist velocity;
+        velocity.linear.x = vxm;
+        velocity.linear.y = vym;
+        velocity.linear.z = Zvelocity;
         VelocityPublisher.publish(velocity);VelocityPublisher;
 
 
@@ -389,6 +395,8 @@ private:
         }
 
         imPrev = imCurr.clone();
+        prevRange = currentRange;
+
 
 
 
@@ -461,8 +469,10 @@ private:
 
     void RangeCallback(const sensor_msgs::Range& range_msg)
     {
-                //ROS_INFO("here");
+        ros::Duration sinceLast = RangeRecTime -ros::Time::now();
         currentRange = range_msg.range;
+        Zvelocity = (currentRange - prevRange)/sinceLast.toSec();
+        RangeRecTime = ros::Time::now();
     }
 
     void drawOpticalFlow(const cv::Mat_<float>& flowx, const cv::Mat_<float>& flowy, cv::Mat& dst, float maxmotion = -1)
@@ -666,6 +676,8 @@ private:
     double cx,cy,fx,fy,s;
 
     double currentRange;
+    double prevRange;
+    double Zvelocity;
 
     int imCenterX, imCenterY;    //center of original image
     int xi, xf, yi, yf; //frame corner coordinates
@@ -677,9 +689,11 @@ private:
     int *yHist;
 
     ros::Time begin;
+    ros::Time RangeRecTime;
 
     bool gui, publish, useCuda;
     int cudaMethod;
+
 
 };
 /*
