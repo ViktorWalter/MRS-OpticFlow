@@ -8,10 +8,12 @@
         <arg name="useCuda" default="true"/>
         <arg name="cudaMethod" default="0"/>
 
+        <arg name="FrameSize" default="240"/>
         <arg name="SamplePointSize" default="8"/>
         <arg name="ScanRadius" default="4"/>
         <arg name="StepSize" default="0"/>
 	
+        <arg name="useOdom" default="false"/>
 		  	
 	  	
                 <node pkg="rosbag" type="play" name="player"  args="--clock /home/viktor/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/_2016-08-17-15-12-58_circle_new_cross_rtk.bag" />
@@ -23,7 +25,7 @@
                         <param name="DEBUG"		type="bool" value="$(arg DEBUG)"/>
 		 	<param name="gui"             type="bool" value="$(arg gui)"/>
 		 	<param name="publish"         type="bool" value="$(arg publish)"/>
-                        <param name="FrameSize"       type="int" value="240"/>
+                        <param name="FrameSize"       type="int" value="$(arg FrameSize)"/>
 
                         <param name="SamplePointSize" type="int" value="$(arg SamplePointSize)"/>
                         <param name="ScanRadius"    type="int" value="$(arg ScanRadius)"/>
@@ -40,9 +42,11 @@
 
                         <param name="useCuda"		type="bool" value="$(arg useCuda)"/>
                         <param name="cudaMethod"	type="int" value="$(arg cudaMethod)"/>
+
+                        <param name="useOdom"           type="bool" value="$(arg useOdom)"/>
                 </node>
 	  	
-                <node pkg="rosbag" type="record" name="recorder"  args="/uav4/mbzirc_odom/precise_odom /optFlow/velocity /optFlow/velocity -O /home/viktor/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/outputs/SpeedCompareB$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize).bag" />
+                <node pkg="rosbag" type="record" name="recorder"  args="/uav4/mbzirc_odom/precise_odom /optFlow/velocity /optFlow/velocity -O /home/viktor/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/outputs/SpeedCompareB$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize)F$(arg FrameSize).bag" />
 
 	</group>
 </launch>

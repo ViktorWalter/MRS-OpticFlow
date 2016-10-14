@@ -5,7 +5,7 @@
 #include <cuda_runtime.h>
 #include <opencv2/gpu/gpumat.hpp>
 
-#define arraySize 17
+#define arraySize 50
 
 static inline void _safe_cuda_call(cudaError err, const char* msg, const char* file_name, const int line_number)
 {
@@ -30,14 +30,17 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
                                             int width,
                                             int height)
 {
+
+
     int scanDiameter = scanRadius*2+1;
     __shared__ int abssum[arraySize][arraySize];
 
 
-    if( (((blockIdx.x+1) * (blockSize + blockStep) +(2*scanRadius) ) <= width)
+    if( (((blockIdx.x+1) * (blockSize + blockStep) +(2*scanRadius)) <= width)
             &&
             ( ((blockIdx.y+1) * (blockSize + blockStep) +(2*scanRadius) ) <= height ) )
     {
+
         abssum[threadIdx.y][threadIdx.x] = 0;
 
             for (int i=0;i<blockSize;i++)
@@ -77,6 +80,8 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
             }
              __syncthreads();
 
+
+
             if ( (threadIdx.y == 0) && (threadIdx.x == 0))
             {
                 int minvalFin = minval[0];
@@ -91,6 +96,7 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
                 }
                 output_Y(blockIdx.y,blockIdx.x) = minY;
                 output_X(blockIdx.y,blockIdx.x) = minX[minY+scanRadius];
+
             }
 
 
@@ -116,7 +122,6 @@ __global__ void _HistogramMaximum(const cv::gpu::PtrStepSz<signed char> input,
 
     atomicAdd(&(Histogram[input(threadIdx.y,threadIdx.x)+scanRadius]),1);
 
-    //Histogram[input(threadIdx.y,threadIdx.x)+scanRadius]++;
     __syncthreads();
 
 

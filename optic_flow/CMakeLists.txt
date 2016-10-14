@@ -3,6 +3,7 @@ project(optic_flow)
 
 FILE(GLOB_RECURSE HEADER_FILES include *.h)
 FILE(GLOB_RECURSE LAUNCHER_FILES include *.launch)
+FILE(GLOB_RECURSE YAML_FILES include *.yaml)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -103,7 +104,7 @@ add_library(block_method src/BlockMethod.cpp)
 add_dependencies(optic_flow_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 
-add_custom_target(headers SOURCES ${HEADER_FILES} ${LAUNCHER_FILES})
+add_custom_target(headers SOURCES ${HEADER_FILES} ${LAUNCHER_FILES} ${YAML_FILES})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(optic_flow_node

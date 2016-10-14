@@ -5,6 +5,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/Range.h>
+#include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
 using namespace std;
 #include <opencv2/gpu/gpu.hpp>
@@ -39,16 +40,28 @@ public:
 
         private_node_handle.param("FrameSize", frameSize, int(64));
         private_node_handle.param("SamplePointSize", samplePointSize, int(8));
+
+
         private_node_handle.param("ScanRadius", scanRadius, int(8));
+        if ((scanRadius>15) && (useCuda) && (cudaMethod==3))
+        {
+            ROS_INFO("This CUDA method only allows scanning size of up to 15 pixels. Trimming to 15 p.");
+            scanRadius = 15;
+        }
+
+
         private_node_handle.param("StepSize", stepSize, int(0));
 
         private_node_handle.param("gui", gui, bool(false));
         private_node_handle.param("publish", publish, bool(true));
 
+        private_node_handle.param("useOdom",useOdom,bool(false));
+
         std::string ImgPath, RangerPath;
         bool ImgCompressed;
         private_node_handle.param("CameraImagePath", ImgPath, std::string("/uav/mv_25001879/image_raw"));
         private_node_handle.param("CameraImageCompressed", ImgCompressed, bool(false));
+
         private_node_handle.param("RangerDataPath", RangerPath, std::string("/uav/terarangerone"));
 
         private_node_handle.param("ScaleFactor", ScaleFactor, int(1));
@@ -88,7 +101,12 @@ public:
         //image_transport::ImageTransport iTran(node);
 
         VelocityPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity", 1);
-        RangeSubscriber = node.subscribe(RangerPath,1,&OpticFlow::RangeCallback, this);
+
+        if (!useOdom)
+            RangeSubscriber = node.subscribe(RangerPath,1,&OpticFlow::RangeCallback, this);
+        else
+            RangeSubscriber = node.subscribe("/uav4/mbzirc_odom/precise_odom",1,&OpticFlow::OdomHeightCallback, this);
+
         if (ImgCompressed)
             ImageSubscriber = node.subscribe(ImgPath, 1, &OpticFlow::ProcessCompressed, this);
         else
@@ -274,7 +292,8 @@ private:
                 velocity.linear.x = vxm;
                 velocity.linear.y = vym;
                 velocity.linear.z = Zvelocity;
-                VelocityPublisher.publish(velocity);VelocityPublisher;
+                velocity.angular.z = currentRange;
+                VelocityPublisher.publish(velocity);
 
 
 
@@ -395,7 +414,6 @@ private:
         }
 
         imPrev = imCurr.clone();
-        prevRange = currentRange;
 
 
 
@@ -473,6 +491,16 @@ private:
         currentRange = range_msg.range;
         Zvelocity = (currentRange - prevRange)/sinceLast.toSec();
         RangeRecTime = ros::Time::now();
+        prevRange = currentRange;
+    }
+
+    void OdomHeightCallback(const nav_msgs::Odometry odom_msg)
+    {
+        ros::Duration sinceLast = RangeRecTime -ros::Time::now();
+        currentRange = odom_msg.pose.pose.position.z;
+        Zvelocity = (currentRange - prevRange)/sinceLast.toSec();
+        RangeRecTime = ros::Time::now();
+        prevRange = currentRange;
     }
 
     void drawOpticalFlow(const cv::Mat_<float>& flowx, const cv::Mat_<float>& flowy, cv::Mat& dst, float maxmotion = -1)
@@ -691,7 +719,7 @@ private:
     ros::Time begin;
     ros::Time RangeRecTime;
 
-    bool gui, publish, useCuda;
+    bool gui, publish, useCuda, useOdom;
     int cudaMethod;
 
 
