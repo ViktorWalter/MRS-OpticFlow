@@ -9,7 +9,7 @@ class BlockMethod: public OpticFlowCalc
 {    
     private:
     cv::Mat imOrigScaled;
-    cv::Mat imCurr;
+    //cv::Mat imCurr;
     cv::Mat imDiff;
     cv::Mat imPrev;
 
@@ -46,6 +46,7 @@ class BlockMethod: public OpticFlowCalc
                 int scanCount,
                 int stepSize
                 );
+
     cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug);
 
 

@@ -10,6 +10,7 @@
 #include <geometry_msgs/Twist.h>
 using namespace std;
 #include <opencv2/gpu/gpu.hpp>
+
 //#include <opencv2/gpuoptflow.hpp>
 //#include <opencv2/gpulegacy.hpp>
 //#include <opencv2/gpuimgproc.hpp>
@@ -17,6 +18,11 @@ using namespace std;
 
 #include "optic_flow/FastSpacedBMOptFlow.h"
 
+#include "optic_flow/BlockMethod.h"
+#include "optic_flow/FftMethod.h"
+#include "optic_flow/OpticFlowCalc.h"
+
+//#define CUDA_SUPPORTED
 
 namespace enc = sensor_msgs::image_encodings;
 
@@ -38,18 +44,29 @@ public:
         private_node_handle.param("DEBUG", DEBUG, bool(false));
 
         private_node_handle.param("useCuda", useCuda, bool(false));
-        private_node_handle.param("cudaMethod", cudaMethod, int(0));
+        private_node_handle.param("method", method, int(0));
+        /* methods:
+         *      0 - Brox, only CUDA
+         *      1 - Farn, only CUDA
+         *      2 - BM, only CUDA
+         *      3 - BM (CUDA - FastSpaced)
+         *      4 - FFT, only CPU
+        */
 
-        private_node_handle.param("FrameSize", frameSize, int(64));
-        private_node_handle.param("SamplePointSize", samplePointSize, int(8));
-
+        if(method < 3 && !useCuda){
+            ROS_ERROR("Specified method support only CUDA");
+        }
 
         private_node_handle.param("ScanRadius", scanRadius, int(8));
-        if ((scanRadius>15) && (useCuda) && (cudaMethod==3))
+        if ((scanRadius>15) && (useCuda) && (method==3))
         {
             ROS_INFO("This CUDA method only allows scanning size of up to 15 pixels. Trimming to 15 p.");
             scanRadius = 15;
         }
+
+        private_node_handle.param("FrameSize", frameSize, int(64));
+        private_node_handle.param("SamplePointSize", samplePointSize, int(8));
+        private_node_handle.param("NumberOfBins", numberOfBins, int(20));
 
 
         private_node_handle.param("StepSize", stepSize, int(0));
@@ -94,6 +111,26 @@ public:
             imPrev_g.create(imPrev.size(),imPrev.type());
             imCurr_g.create(imCurr.size(),imCurr.type());
         }
+
+
+        useProcessClass = false;
+        if(!useCuda && method >= 3 && method <= 4){
+            switch(method){
+                case 3:
+                {
+                    processClass = new BlockMethod(frameSize,samplePointSize,scanRadius,scanDiameter,scanCount,stepSize);
+                    break;
+                }
+                case 4:
+                {
+                    processClass = new  FftMethod(frameSize,samplePointSize,numberOfBins);
+                    break;
+                }
+            }
+            useProcessClass = true;
+
+        }
+
 
 
         begin = ros::Time::now();
@@ -185,9 +222,10 @@ private:
             first = false;
         }
 
-
+#ifdef CUDA_SUPPORTED
         cv::gpu::BroxOpticalFlow brox(0.197f, 50.0f, 0.8f, 10, 77, 10);
         cv::gpu::FarnebackOpticalFlow farn;
+#endif
 
         ros::Duration dur = ros::Time::now()-begin;
         ROS_INFO("freq = %fHz",1.0/dur.toSec());
@@ -218,17 +256,35 @@ private:
         cv::cvtColor(imOrigScaled(frameRect),imCurr,CV_RGB2GRAY);
         //ROS_INFO("Here");
 
-        if (useCuda && (cudaMethod<4))
-        {
+        if(useProcessClass){
+            ROS_INFO("Using process class");
+            cv::Point2f out = processClass->processImage(imCurr,gui,DEBUG);
 
+            ROS_INFO("vxr = %f; vyr=%f",out.x,out.y);
+            double vxm, vym, vam;
+            vxm = out.x*(trueRange/fx)/dur.toSec();
+            vym = out.y*(trueRange/fy)/dur.toSec();
+            vam = sqrt(vxm*vxm+vym*vym);
+            ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
+
+            geometry_msgs::Twist velocity;
+            velocity.linear.x = vxm;
+            velocity.linear.y = vym;
+            velocity.linear.z = Zvelocity;
+            VelocityPublisher.publish(velocity);VelocityPublisher;
+
+        }else{
+
+        if (useCuda && (method<4))
+        {
+#ifdef CUDA_SUPPORTED
             imPrev_g.upload(imPrev);
             imCurr_g.upload(imCurr);
 
 
             //ROS_INFO("Here");
-
-            //ROS_INFO("method: %d",cudaMethod);
-            if (cudaMethod == 0)
+            //ROS_INFO("method: %d",method);
+            if (method == 0)
             {
                 cv::gpu::GpuMat imPrev_gf;
                 cv::gpu::GpuMat imCurr_gf;
@@ -248,7 +304,7 @@ private:
                 if (gui)
                     showFlow("Brox", flowX_g,flowY_g);
             }
-            else if (cudaMethod == 1)
+            else if (method == 1)
                 {
                     clock_t beginGPU = clock();
                     farn(imCurr_g, imPrev_g, flowX_g, flowY_g);
@@ -260,7 +316,7 @@ private:
                     if (gui)
                         showFlow("Brox", flowX_g,flowY_g);
                 }
-            else if (cudaMethod == 2)
+            else if (method == 2)
             {
                 //cv::gpu::GpuMat buf_g;
 
@@ -297,8 +353,7 @@ private:
                 VelocityPublisher.publish(velocity);
 
             }
-            else if (cudaMethod == 3)
-            {
+            else if (method == 3) {
                 //my method
                 signed char outputX;
                 signed char outputY;
@@ -345,7 +400,7 @@ private:
 
 
             }
-
+#endif
         }
         else
         {
@@ -461,6 +516,8 @@ private:
         }
 
         imPrev = imCurr.clone();
+
+        }
 
 
 
@@ -713,7 +770,6 @@ private:
 
     cv::gpu::FastOpticalFlowBM fastBM;
 
-
     cv::Mat imView;
     cv::Mat absDiffsMat;
     cv::Mat absDiffsMatSubpix;
@@ -749,7 +805,13 @@ private:
     ros::Time begin;
 
     bool gui, publish, useCuda, useOdom;
-    int cudaMethod;
+    int method;
+
+    int numberOfBins;
+
+    OpticFlowCalc *processClass;
+
+    bool useProcessClass;
 
 
 };

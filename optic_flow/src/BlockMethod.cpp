@@ -1,6 +1,6 @@
 #include "../include/optic_flow/BlockMethod.h"
 
-// Date constructor
+
 BlockMethod::BlockMethod(int i_frameSize,
                       int i_samplePointSize,
                       int i_scanRadius,
@@ -29,7 +29,6 @@ BlockMethod::BlockMethod(int i_frameSize,
 
 }
 
-// Date member function
 
 cv::Point2f BlockMethod::processImage(cv::Mat imCurr,
                                               bool gui,
