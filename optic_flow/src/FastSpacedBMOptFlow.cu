@@ -145,6 +145,47 @@ __global__ void _HistogramMaximum(const cv::gpu::PtrStepSz<signed char> input,
 
 }
 
+__global__ void _CorrectLensDist_kernel(    const cv::gpu::PtrStepSz<signed char> input_X,
+                                            const cv::gpu::PtrStepSz<signed char> input_Y,
+                                            cv::gpu::PtrStepSz<signed char> output_X,
+                                            cv::gpu::PtrStepSz<signed char> output_Y,
+                                            int blockSize,
+                                            int blockStep,
+                                            int scanRadius,
+                                            int cx, int cy, int fx, int fy,
+                                            double k1, double k2, double k3,
+                                            double p1, double p2)
+{
+    signed char dx = input_X(blockIdx.y, blockIdx.x);
+    signed char dy = input_Y(blockIdx.y, blockIdx.x);
+    double px = ((blockIdx.x*(blockSize+blockStep)) + scanRadius + blockSize/2-cx)/((double)fx);
+    double py = ((blockIdx.y*(blockSize+blockStep)) + scanRadius + blockSize/2-cy)/((double)fy);
+    double r2;
+    double K = (1 + k1*r2 + k2*r2*r2 + k3*r2*r2*r2);
+
+
+    output_X(blockIdx.y, blockIdx.x) =
+                (signed char)(dx * K + 2*p1*(dx*dy+dx*py+dy*px) + 2*p2*(dx*dx + 2*px*dx));
+
+    output_Y(blockIdx.y, blockIdx.x) =
+                (signed char)(dy * K + 2*p1*(dx*dy+dx*py+dy*px) + 2*p2*(dy*dy + 2*py*dy));
+
+    double dxn, dyn;
+
+    dxn = dx;
+    dyn = dy;
+
+    for (int i = 0; i++; i<5)
+    {
+        r2 = (px*px + py*py);
+        dxn = (x0 - 2*p1*x*y + kp2*(r2 + 2*x*x))/(1 + k1*r2 + k2*r2*r2 + k3*r2*r2*r2);
+        dyn = (y0 - p1*(r2 + 2*y*y) + 2*p2*x*y)/(1 + k1*r2 + k2*r4 + k3*r6);
+    }
+
+}
+
+
+
 __global__ void _CopyMatrix(const cv::gpu::PtrStepSzb input,
                             cv::gpu::PtrStepb output,
                             int blockSize,
@@ -165,6 +206,8 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
                          int blockSize,
                          int blockStep,
                          int scanRadius,
+                         double cx, double cy, double fx, double fy,
+                         double k1, double k2, double k3, double p1, double p2,
                          signed char &outX,
                          signed char &outY)
 {
@@ -196,10 +239,19 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     _imOutY.create(grid.x,grid.y,CV_8SC1);
     const cv::gpu::GpuMat imOutY = _imOutY.getGpuMat();
 
-    //_CopyMatrix<<<1,blockM>>>(imPrev,imOutX,blockSize,imPrev.cols,imPrev.rows);
-    _FastSpacedBMOptFlow_kernel<<<grid,block,0>>>(imPrev,imCurr,imOutX,imOutY,
+    const cv::gpu::GpuMat imOutX_raw = imOutX.clone();
+    const cv::gpu::GpuMat imOutY_raw = imOutX.clone();
+
+    SAFE_CALL(cudaDeviceSynchronize(),"Matrix creation Failed 1");
+
+    _FastSpacedBMOptFlow_kernel<<<grid,block,0>>>(imPrev,imCurr,imOutX_raw,imOutY_raw,
                                                 blockSize,blockStep,scanRadius,
                                                 imCurr.cols, imCurr.rows);
+
+    SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 1");
+    _CorrectLensDist_kernel<<<grid,1,1>>>(imOutX_raw,imOutY_raw, imOutX,imOutY,
+                                        blockSize, blockStep, scanRadius,
+                                        cx, cy, fx, fy, k1, k2, k3, p1, p2);
 
     signed char outX_l;
     signed char outY_l;
@@ -209,19 +261,19 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     cudaMalloc(&outX_g, sizeof(signed char));
     cudaMalloc(&outY_g, sizeof(signed char));
 
-    SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 1");
-    _HistogramMaximum<<<1,grid,1>>>(imOutX,scanRadius, scanDiameter,outX_g);
-    _HistogramMaximum<<<1,grid,1>>>(imOutY,scanRadius, scanDiameter,outY_g);
-
     SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 2");
+    //_HistogramMaximum<<<1,grid,2>>>(imOutX,scanRadius, scanDiameter,outX_g);
+    //_HistogramMaximum<<<1,grid,2>>>(imOutY,scanRadius, scanDiameter,outY_g);
 
+
+    SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 3");
     SAFE_CALL(cudaMemcpy(&outX_l,outX_g,sizeof(signed char),cudaMemcpyDeviceToHost),"Memcpy to host failed");
     SAFE_CALL(cudaMemcpy(&outY_l,outY_g,sizeof(signed char),cudaMemcpyDeviceToHost),"Memcpy to host failed");
 
     cudaFree(outX_g);
     cudaFree(outY_g);
 
-   SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 3");
+   SAFE_CALL(cudaDeviceSynchronize(),"Memory copy failed");
 
    outX = outX_l;
    outY = outY_l;

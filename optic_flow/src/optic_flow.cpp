@@ -73,6 +73,14 @@ public:
         cx = camMat[2];
         fy = camMat[4];
         cy = camMat[5];
+        std::vector<double> distCoeffs;
+        private_node_handle.getParam("distortion_coefficients/data",distCoeffs);
+        k1 = distCoeffs[0];
+        k2 = distCoeffs[1];
+        k3 = distCoeffs[4];
+        p1 = distCoeffs[2];
+        p2 = distCoeffs[3];
+
 
         private_node_handle.getParam("image_width", expectedWidth);
 
@@ -307,6 +315,7 @@ private:
                 cv::Mat outYconv;
 
                 FastSpacedBMOptFlow(imCurr_g,imPrev_g, flowX_g,flowY_g,samplePointSize,stepSize,scanRadius,
+                                    cx, cy, fx,fy, k1, k2, k3, p1, p2,
                                     outputX,
                                     outputY
                                     );
@@ -730,6 +739,7 @@ private:
     int stepSize;
 
     double cx,cy,fx,fy,s;
+    double k1,k2,p1,p2,k3;
 
     double currentRange;
     double trueRange;

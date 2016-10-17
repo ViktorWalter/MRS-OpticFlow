@@ -7,6 +7,8 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
                          int blockSize,
                          int blockStep,
                          int scanRadius,
+                         double cx, double cy,double fx,
+                         double fy, double k1, double k2, double k3, double p1, double p2,
                          signed char &outX,
                          signed char &outY);
 
