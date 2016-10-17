@@ -68,7 +68,7 @@ find_package(OpenCV REQUIRED)
 
 catkin_package(
    INCLUDE_DIRS include
-   LIBRARIES ${PROJECT_NAME}
+   LIBRARIES ${PROJECT_NAME} block_method fft_method
    CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs message_runtime
 #  DEPENDS system_lib
    DEPENDS Eigen
@@ -94,10 +94,15 @@ include_directories(
 cuda_compile(fsbmof STATIC src/FastSpacedBMOptFlow.cu)
 cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu)
 
+add_library(block_method src/BlockMethod.cpp)
+add_library(fft_method src/FftMethod.cpp)
+
+
 ## Declare a C++ executable
 add_executable(optic_flow_node src/optic_flow.cpp)
 
-add_library(block_method src/BlockMethod.cpp)
+
+
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -108,6 +113,8 @@ add_custom_target(headers SOURCES ${HEADER_FILES} ${LAUNCHER_FILES} ${YAML_FILES
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(optic_flow_node
+    block_method
+    fft_method
    fsbmof
    ${catkin_LIBRARIES}
    ${CUDA_LIBRARIES}

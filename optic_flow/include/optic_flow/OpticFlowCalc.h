@@ -5,10 +5,12 @@
 
 class OpticFlowCalc
 {
+
     public:
-        virtual cv::Point2f processImage(cv::Mat imCurr,
-                                                 bool gui,
-                                                 bool debug);
+           virtual cv::Point2f processImage(cv::Mat imCurr,
+                                         bool gui,
+                                         bool debug){
+    }
 };
 
 #endif // OPTICFLOWCALC_H
