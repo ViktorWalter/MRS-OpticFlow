@@ -6,14 +6,14 @@
 
         <arg name="DEBUG" default="false"/>
         <arg name="useCuda" default="true"/>
-        <arg name="cudaMethod" default="0"/>
+        <arg name="cudaMethod" default="3"/>
 
         <arg name="FrameSize" default="240"/>
         <arg name="SamplePointSize" default="8"/>
         <arg name="ScanRadius" default="4"/>
         <arg name="StepSize" default="0"/>
 	
-        <arg name="useOdom" default="false"/>
+        <arg name="useOdom" default="true"/>
 		  	
 	  	
                 <node pkg="rosbag" type="play" name="player"  args="--clock /home/viktor/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/_2016-08-17-15-12-58_circle_new_cross_rtk.bag" />

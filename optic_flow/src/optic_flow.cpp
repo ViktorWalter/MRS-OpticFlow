@@ -1,4 +1,4 @@
-#define measureDistance 0.5
+#define maxTerraRange 8.0
 
 #include <ros/ros.h>
 #include <tf/tf.h>
@@ -32,6 +32,7 @@ public:
     OpticFlow(ros::NodeHandle& node)
     {
         coordsAcquired = false;
+        first = true;
 
         ros::NodeHandle private_node_handle("~");
         private_node_handle.param("DEBUG", DEBUG, bool(false));
@@ -73,6 +74,8 @@ public:
         fy = camMat[4];
         cy = camMat[5];
 
+        private_node_handle.getParam("image_width", expectedWidth);
+
         if ((frameSize % 2) == 1)
         {
             frameSize--;
@@ -101,17 +104,15 @@ public:
 
         VelocityPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity", 1);
 
-        if (!useOdom)
-            RangeSubscriber = node.subscribe(RangerPath,1,&OpticFlow::RangeCallback, this);
-        else
-            RangeSubscriber = node.subscribe("/uav4/mbzirc_odom/precise_odom",1,&OpticFlow::OdomHeightCallback, this);
+        RangeSubscriber = node.subscribe(RangerPath,1,&OpticFlow::RangeCallback, this);
+
+        if (useOdom)
+            TiltSubscriber = node.subscribe("/uav4/mbzirc_odom/precise_odom",1,&OpticFlow::CorrectTilt, this);
 
         if (ImgCompressed)
             ImageSubscriber = node.subscribe(ImgPath, 1, &OpticFlow::ProcessCompressed, this);
         else
             ImageSubscriber = node.subscribe(ImgPath, 1, &OpticFlow::ProcessRaw, this);
-
-        TiltSubscriber = node.subscribe("/uav4/mbzirc_odom/precise_odom", 1, )
 
 
     }
@@ -122,6 +123,44 @@ public:
     }
 
 private:
+
+
+    void RangeCallback(const sensor_msgs::Range& range_msg)
+    {
+        if (range_msg.range < 0.001) //zero
+        {
+            return;
+        }
+
+        currentRange = range_msg.range;
+        if (!useOdom)
+        {
+            ros::Duration sinceLast = RangeRecTime -ros::Time::now();
+            Zvelocity = (currentRange - prevRange)/sinceLast.toSec();
+            trueRange = currentRange;
+            RangeRecTime = ros::Time::now();
+            prevRange = currentRange;
+        }
+
+    }
+
+    void CorrectTilt(const nav_msgs::Odometry odom_msg)
+    {
+        tf::Quaternion bt;
+        tf::quaternionMsgToTF(odom_msg.pose.pose.orientation,bt);
+        tf::Matrix3x3(bt).getRPY(roll, pitch, yaw);
+        Zvelocity = odom_msg.twist.twist.linear.z;
+
+        if (currentRange > maxTerraRange)
+        {
+            trueRange = odom_msg.pose.pose.position.z;
+        }
+        else
+        {
+            trueRange = cos(pitch)*cos(roll)*currentRange;
+        }
+    }
+
 
     void ProcessCompressed(const sensor_msgs::CompressedImageConstPtr& image_msg)
     {
@@ -140,19 +179,24 @@ private:
 
     void Process(const cv_bridge::CvImagePtr image)
     {
+        if (first)
+        {
+            ROS_INFO("Source img: %dx%d", image->image.cols, image->image.rows);
+            first = false;
+        }
+
 
         cv::gpu::BroxOpticalFlow brox(0.197f, 50.0f, 0.8f, 10, 77, 10);
-        //lk =    cv::gpu::DensePyrLKOpticalFlow::create(cv::Size(7, 7));
-        //cv::Ptr<cv::gpu::DensePyrLKOpticalFlow> lk;
         cv::gpu::FarnebackOpticalFlow farn;
-        //cv::Ptr<cv::gpu::OpticalFlowDual_TVL1> tvl1;
 
         ros::Duration dur = ros::Time::now()-begin;
         ROS_INFO("freq = %fHz",1.0/dur.toSec());
         begin = ros::Time::now();
 
-
-        //ROS_INFO("res: %dX%d",image->image.size().width,image->image.size().height);
+        if (ScaleFactor == 1)
+        {
+            ScaleFactor = image->image.cols/expectedWidth;
+        }
 
         if (ScaleFactor != 1)
             cv::resize(image->image,imOrigScaled,cv::Size(image->image.size().width/ScaleFactor,image->image.size().height/ScaleFactor));
@@ -241,8 +285,8 @@ private:
                 //ROS_INFO("vxu = %d; vyu=%d",outputX,outputY);
                 //ROS_INFO("vxr = %f; vyr=%f",outputX[0],outputY[0]);
                 double vxm, vym, vam;
-                vxm = outputX[0]*(currentRange/fx)/dur.toSec();
-                vym = outputY[0]*(currentRange/fy)/dur.toSec();
+                vxm = outputX[0]*(trueRange/fx)/dur.toSec();
+                vym = outputY[0]*(trueRange/fy)/dur.toSec();
                 vam = sqrt(vxm*vxm+vym*vym);
                 ROS_INFO("vxm = %f; vym=%f; vam=%f",vxm,vym,vam );
 
@@ -285,8 +329,8 @@ private:
 
                 ROS_INFO("vxr = %d; vyr=%d",outputX,outputY);
                 double vxm, vym, vzm, vam;
-                vxm = outputX*(currentRange/fx)/dur.toSec();
-                vym = outputY*(currentRange/fy)/dur.toSec();
+                vxm = outputX*(trueRange/fx)/dur.toSec();
+                vym = outputY*(trueRange/fy)/dur.toSec();
                 vam = sqrt(vxm*vxm+vym*vym);
 
                 ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
@@ -295,7 +339,7 @@ private:
                 velocity.linear.x = vxm;
                 velocity.linear.y = vym;
                 velocity.linear.z = Zvelocity;
-                velocity.angular.z = currentRange;
+                velocity.angular.z = trueRange;
                 VelocityPublisher.publish(velocity);
 
 
@@ -387,8 +431,8 @@ private:
         //ROS_INFO("vxu = %d; vyu=%d",outputX,outputY);
         ROS_INFO("vxr = %f; vyr=%f",refined.x,refined.y);
         double vxm, vym, vzm, vam;
-        vxm = refined.x*(currentRange/fx)/dur.toSec();
-        vym = refined.y*(currentRange/fy)/dur.toSec();
+        vxm = refined.x*(trueRange/fx)/dur.toSec();
+        vym = refined.y*(trueRange/fy)/dur.toSec();
         vam = sqrt(vxm*vxm+vym*vym);
         ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
 
@@ -488,32 +532,7 @@ private:
         return output;
     }
 
-    void RangeCallback(const sensor_msgs::Range& range_msg)
-    {
-        ros::Duration sinceLast = RangeRecTime -ros::Time::now();
-        currentRange = range_msg.range;
-        Zvelocity = (currentRange - prevRange)/sinceLast.toSec();
-        RangeRecTime = ros::Time::now();
-        prevRange = currentRange;
-    }
 
-    void OdomHeightCallback(const nav_msgs::Odometry odom_msg)
-    {
-        currentRange = odom_msg.pose.pose.position.z;
-        Zvelocity = odom_msg.twist.twist.linear.z;
-    }
-
-
-    void daasdfasdsfasef(const nav_msgs::Odometry odom_msg)
-    {
-        tf::Quaternion bt;
-        tf::quaternionMsgToTF(odom_msg.pose.pose.orientation,bt);
-        double roll, pitch, yaw;
-        tf::Matrix3x3(bt).getRPY(roll, pitch, yaw);
-
-        trueRange = cos(pitch)*cos(roll)*currentRange;
-
-    }
 
     void drawOpticalFlow(const cv::Mat_<float>& flowx, const cv::Mat_<float>& flowy, cv::Mat& dst, float maxmotion = -1)
     {
@@ -660,20 +679,15 @@ private:
     }
 
 
-    /*int getHistMax(cv::Mat input)
-    {
-        cv::gpu::cal
-
-        for (int i = 0;i<scanDiameter;i++)
-        {
-            xHist[i]=0;
-            yHist[i]=0;
-        }
 
 
-    }*/
+
+
 
     bool DEBUG;
+    bool first;
+
+    ros::Time RangeRecTime;
 
     ros::Subscriber ImageSubscriber;
     ros::Subscriber RangeSubscriber;
@@ -704,6 +718,7 @@ private:
     cv::Mat absDiffsMat;
     cv::Mat absDiffsMatSubpix;
 
+    int expectedWidth;
     int ScaleFactor;
 
     int frameSize;
@@ -718,7 +733,9 @@ private:
 
     double currentRange;
     double trueRange;
+    double prevRange;
     double Zvelocity;
+    double roll, pitch, yaw;
 
     int imCenterX, imCenterY;    //center of original image
     int xi, xf, yi, yf; //frame corner coordinates
@@ -736,30 +753,7 @@ private:
 
 
 };
-/*
-class Viewer
-{
-public:
-    Viewer(ros::NodeHandle& node)
-    {
-        ImageSubscriber = node.subscribe("/optFlow/diffImage", 1, &Viewer::Process, this);
-    }
 
-private:
-    void Process(const sensor_msgs::ImageConstPtr& image_msg)
-    {
-        cv_bridge::CvImagePtr image;
-
-
-        image = cv_bridge::toCvCopy(image_msg, enc::BGR8);
-        cv::imshow("main",image->image);
-
-    }
-
-
-    ros::Subscriber ImageSubscriber;
-};
-*/
 
 int main(int argc, char** argv)
 {
