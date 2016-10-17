@@ -1,6 +1,7 @@
 #define measureDistance 0.5
 
 #include <ros/ros.h>
+#include <tf/tf.h>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <image_transport/image_transport.h>
@@ -84,8 +85,6 @@ public:
         imPrev = cv::Mat(frameSize,frameSize,CV_8UC1);
         imPrev = cv::Scalar(0);
 
-        prevRange = 0;
-
         if (useCuda)
         {
             ResetCudaDevice();
@@ -111,6 +110,8 @@ public:
             ImageSubscriber = node.subscribe(ImgPath, 1, &OpticFlow::ProcessCompressed, this);
         else
             ImageSubscriber = node.subscribe(ImgPath, 1, &OpticFlow::ProcessRaw, this);
+
+        TiltSubscriber = node.subscribe("/uav4/mbzirc_odom/precise_odom", 1, )
 
 
     }
@@ -274,7 +275,9 @@ private:
 
                 }
                 if (gui)
+                {
                     showFlow("TVL1", flowX_g, flowY_g, outputX, outputY);
+                }
 
 
 
@@ -496,11 +499,20 @@ private:
 
     void OdomHeightCallback(const nav_msgs::Odometry odom_msg)
     {
-        ros::Duration sinceLast = RangeRecTime -ros::Time::now();
         currentRange = odom_msg.pose.pose.position.z;
-        Zvelocity = (currentRange - prevRange)/sinceLast.toSec();
-        RangeRecTime = ros::Time::now();
-        prevRange = currentRange;
+        Zvelocity = odom_msg.twist.twist.linear.z;
+    }
+
+
+    void daasdfasdsfasef(const nav_msgs::Odometry odom_msg)
+    {
+        tf::Quaternion bt;
+        tf::quaternionMsgToTF(odom_msg.pose.pose.orientation,bt);
+        double roll, pitch, yaw;
+        tf::Matrix3x3(bt).getRPY(roll, pitch, yaw);
+
+        trueRange = cos(pitch)*cos(roll)*currentRange;
+
     }
 
     void drawOpticalFlow(const cv::Mat_<float>& flowx, const cv::Mat_<float>& flowy, cv::Mat& dst, float maxmotion = -1)
@@ -666,6 +678,7 @@ private:
     ros::Subscriber ImageSubscriber;
     ros::Subscriber RangeSubscriber;
     ros::Publisher VelocityPublisher;
+    ros::Subscriber TiltSubscriber;
 
 
     cv::Mat imOrigScaled;
@@ -704,7 +717,7 @@ private:
     double cx,cy,fx,fy,s;
 
     double currentRange;
-    double prevRange;
+    double trueRange;
     double Zvelocity;
 
     int imCenterX, imCenterY;    //center of original image
@@ -717,7 +730,6 @@ private:
     int *yHist;
 
     ros::Time begin;
-    ros::Time RangeRecTime;
 
     bool gui, publish, useCuda, useOdom;
     int cudaMethod;

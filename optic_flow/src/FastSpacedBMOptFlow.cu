@@ -6,6 +6,7 @@
 #include <opencv2/gpu/gpumat.hpp>
 
 #define arraySize 50
+#define MinValThreshold (scanRadius*scanRadius*0.2)
 
 static inline void _safe_cuda_call(cudaError err, const char* msg, const char* file_name, const int line_number)
 {
@@ -35,11 +36,6 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
     int scanDiameter = scanRadius*2+1;
     __shared__ int abssum[arraySize][arraySize];
 
-
-    if( (((blockIdx.x+1) * (blockSize + blockStep) +(2*scanRadius)) <= width)
-            &&
-            ( ((blockIdx.y+1) * (blockSize + blockStep) +(2*scanRadius) ) <= height ) )
-    {
 
         abssum[threadIdx.y][threadIdx.x] = 0;
 
@@ -97,27 +93,31 @@ __global__ void _FastSpacedBMOptFlow_kernel(const cv::gpu::PtrStepSzb input_1,
                 output_Y(blockIdx.y,blockIdx.x) = minY;
                 output_X(blockIdx.y,blockIdx.x) = minX[minY+scanRadius];
 
+                if ((abssum[scanRadius][scanRadius] - minvalFin) <= MinValThreshold)  //if the difference is small, then it is considered to be noise in a uniformly colored area
+                {
+                    output_Y(blockIdx.y,blockIdx.x) = 0;
+                    output_X(blockIdx.y,blockIdx.x) = 0;
+                }
+
+
             }
-
-
-
-    }
-
-
-
 
 
 }
 
 __global__ void _HistogramMaximum(const cv::gpu::PtrStepSz<signed char> input,
                                   int scanRadius,
+                                  int scanDiameter,
                                   signed char *value)
 {
 
     __shared__ int Histogram[arraySize];
 
-    if ((threadIdx.x < blockDim.y) && (threadIdx.y == 0))
-        Histogram[threadIdx.x] = 0;
+
+    int index = (threadIdx.y*blockDim.x+threadIdx.x);
+    if (index < scanDiameter)
+        Histogram[index] = 0;
+
     __syncthreads();
 
     atomicAdd(&(Histogram[input(threadIdx.y,threadIdx.x)+scanRadius]),1);
@@ -129,7 +129,8 @@ __global__ void _HistogramMaximum(const cv::gpu::PtrStepSz<signed char> input,
     {
         int MaxIndex = 0;
         char  MaxVal = 0;
-        for (int i=0;i<blockDim.y;i++)
+
+        for (int i=0;i<scanDiameter;i++)
         {
             if (MaxVal < Histogram[i])
             {
@@ -138,6 +139,8 @@ __global__ void _HistogramMaximum(const cv::gpu::PtrStepSz<signed char> input,
             }
         }
         *value = MaxIndex - scanRadius;
+
+
     }
 
 }
@@ -180,7 +183,7 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
         exit(EXIT_FAILURE);
     }
 
-    int scanDiameter = 2*scanRadius+1;
+    int scanDiameter = (2*scanRadius)+1;
     int blockszX = blockStep+blockSize;
     int blockszY = blockStep+blockSize;
 
@@ -207,8 +210,8 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     cudaMalloc(&outY_g, sizeof(signed char));
 
     SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 1");
-    _HistogramMaximum<<<1,grid,1>>>(imOutX,scanRadius,outX_g);
-    _HistogramMaximum<<<1,grid,1>>>(imOutY,scanRadius,outY_g);
+    _HistogramMaximum<<<1,grid,1>>>(imOutX,scanRadius, scanDiameter,outX_g);
+    _HistogramMaximum<<<1,grid,1>>>(imOutY,scanRadius, scanDiameter,outY_g);
 
     SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 2");
 
