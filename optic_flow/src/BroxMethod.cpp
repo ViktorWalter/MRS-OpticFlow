@@ -1,5 +1,4 @@
 #include "../include/optic_flow/BroxMethod.h"
-#include <opencv2/gpu/gpu.hpp>
 
 BroxMethod::BroxMethod(int samplePointSize_t,int scanRadius_t)
     {

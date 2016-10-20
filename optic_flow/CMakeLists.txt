@@ -111,22 +111,25 @@ add_executable(optic_flow_node src/optic_flow.cpp)
 ## same as for the library above
 add_dependencies(optic_flow_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-
 add_custom_target(headers SOURCES ${HEADER_FILES} ${LAUNCHER_FILES} ${YAML_FILES})
+
+#target_link_libraries(fastSpaced_method fsbmof)
+#target_link_libraries(farn_method  ${OpenCV_LIBRARIES})
+target_link_libraries(brox_method  ${OpenCV_LIBRARIES})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(optic_flow_node
     fsbmof
+   ${catkin_LIBRARIES}
+   ${CUDA_LIBRARIES}
+   ${OpenCV_LIBRARIES}
+   ${EIGEN3_LIBRARIES}
+
     block_method
     fft_method
     brox_method
     farn_method
     tvl1_method
     fastSpaced_method
-
-   ${catkin_LIBRARIES}
-   ${CUDA_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-   ${EIGEN3_LIBRARIES}
 )
 
