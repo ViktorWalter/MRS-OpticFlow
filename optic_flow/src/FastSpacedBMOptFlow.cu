@@ -144,7 +144,7 @@ __global__ void _HistogramMaximum(const cv::gpu::PtrStepSz<signed char> input,
     }
 
 }
-
+/*
 __global__ void _CorrectLensDist_kernel(    const cv::gpu::PtrStepSz<signed char> input_X,
                                             const cv::gpu::PtrStepSz<signed char> input_Y,
                                             cv::gpu::PtrStepSz<signed char> output_X,
@@ -184,7 +184,7 @@ __global__ void _CorrectLensDist_kernel(    const cv::gpu::PtrStepSz<signed char
 
 }
 
-
+*/
 
 __global__ void _CopyMatrix(const cv::gpu::PtrStepSzb input,
                             cv::gpu::PtrStepb output,
@@ -248,10 +248,10 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
                                                 blockSize,blockStep,scanRadius,
                                                 imCurr.cols, imCurr.rows);
 
-    SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 1");
+  /*  SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 1");
     _CorrectLensDist_kernel<<<grid,1,1>>>(imOutX_raw,imOutY_raw, imOutX,imOutY,
                                         blockSize, blockStep, scanRadius,
-                                        cx, cy, fx, fy, k1, k2, k3, p1, p2);
+                                        cx, cy, fx, fy, k1, k2, k3, p1, p2);*/
 
     signed char outX_l;
     signed char outY_l;
