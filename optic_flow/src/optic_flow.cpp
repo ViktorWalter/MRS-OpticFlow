@@ -20,6 +20,10 @@ using namespace std;
 
 #include "optic_flow/BlockMethod.h"
 #include "optic_flow/FftMethod.h"
+#include "optic_flow/BroxMethod.h"
+#include "optic_flow/FarnMethod.h"
+#include "optic_flow/FastSpacedBMethod.h"
+#include "optic_flow/Tvl1Method.h"
 #include "optic_flow/OpticFlowCalc.h"
 
 //#define CUDA_SUPPORTED
@@ -121,12 +125,35 @@ public:
         }
 
 
+        if(useCuda && method != 3){
+            ROS_WARN("Method does not have cuda/noncuda version.");
+        }
+
         useProcessClass = false;
-        if(!useCuda && method >= 3 && method <= 4){
+        if(1){
             switch(method){
+                case 0:
+                {
+                    processClass = new BroxMethod(samplePointSize,scanRadius);
+                    break;
+                }
+                case 1:
+                {
+                    processClass = new FarnMethod(samplePointSize,scanRadius);
+                    break;
+                }
+                case 2:
+                {
+                    processClass = new Tvl1Method(samplePointSize,scanRadius);
+                    break;
+                }
                 case 3:
                 {
-                    processClass = new BlockMethod(frameSize,samplePointSize,scanRadius,scanDiameter,scanCount,stepSize);
+                    if(useCuda){
+                        processClass = new FastSpacedBMethod(samplePointSize,scanRadius,stepSize,cx,cy,fx,fy,k1,k2,k3,p1,p2);
+                    }else{
+                        processClass = new BlockMethod(frameSize,samplePointSize,scanRadius,scanDiameter,scanCount,stepSize);
+                    }
                     break;
                 }
                 case 4:
@@ -134,6 +161,7 @@ public:
                     processClass = new  FftMethod(frameSize,samplePointSize,numberOfBins);
                     break;
                 }
+
             }
             useProcessClass = true;
 

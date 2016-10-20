@@ -68,7 +68,7 @@ find_package(OpenCV REQUIRED)
 
 catkin_package(
    INCLUDE_DIRS include
-   LIBRARIES ${PROJECT_NAME} block_method fft_method
+   LIBRARIES ${PROJECT_NAME} block_method fft_method brox_method farn_method tvl1_method fastSpaced_method
    CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs message_runtime
 #  DEPENDS system_lib
    DEPENDS Eigen
@@ -96,7 +96,10 @@ cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu)
 
 add_library(block_method src/BlockMethod.cpp)
 add_library(fft_method src/FftMethod.cpp)
-
+add_library(brox_method src/BroxMethod.cpp)
+add_library(farn_method src/FarnMethod.cpp)
+add_library(tvl1_method src/Tvl1Method.cpp)
+add_library(fastSpaced_method src/FastSpacedBMethod.cpp)
 
 ## Declare a C++ executable
 add_executable(optic_flow_node src/optic_flow.cpp)
@@ -113,11 +116,17 @@ add_custom_target(headers SOURCES ${HEADER_FILES} ${LAUNCHER_FILES} ${YAML_FILES
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(optic_flow_node
+    fsbmof
     block_method
     fft_method
-   fsbmof
+    brox_method
+    farn_method
+    tvl1_method
+    fastSpaced_method
+
    ${catkin_LIBRARIES}
    ${CUDA_LIBRARIES}
    ${OpenCV_LIBRARIES}
    ${EIGEN3_LIBRARIES}
 )
+

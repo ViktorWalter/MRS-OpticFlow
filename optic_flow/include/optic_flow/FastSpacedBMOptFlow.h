@@ -1,6 +1,6 @@
 #ifndef FASTBMOF_H_
 #define FASTBMOF_H_
-#include <opencv2/core.hpp>
+#include <opencv2/core/core.hpp>
 
 void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
                          cv::OutputArray _imOutX, cv::OutputArray _imOutY,
