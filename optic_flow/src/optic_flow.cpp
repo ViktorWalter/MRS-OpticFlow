@@ -196,6 +196,8 @@ private:
         tf::Matrix3x3(bt).getRPY(roll, pitch, yaw);
         Zvelocity = odom_msg.twist.twist.linear.z;
 
+        angVel = cv::Point2d(odom_msg.twist.twist.angular.x,odom_msg.twist.twist.angular.y);
+
         if (currentRange > maxTerraRange)
         {
             trueRange = odom_msg.pose.pose.position.z;
@@ -272,6 +274,11 @@ private:
             double vxm, vym, vam;
             vxm = out.x*(trueRange/fx)/dur.toSec();
             vym = out.y*(trueRange/fy)/dur.toSec();
+
+            //angular vel. corr (not with Z ax.)
+            vxm = vxm - angVel.y * trueRange;
+            vym = vym - angVel.x * trueRange;
+
             vam = sqrt(vxm*vxm+vym*vym);
             ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
 
@@ -802,6 +809,10 @@ private:
     double prevRange;
     double Zvelocity;
     double roll, pitch, yaw;
+
+    cv::Point2d angVel;
+
+
 
     int imCenterX, imCenterY;    //center of original image
     int xi, xf, yi, yf; //frame corner coordinates
