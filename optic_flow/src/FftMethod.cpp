@@ -1,5 +1,9 @@
 #include "../include/optic_flow/FftMethod.h"
 
+#include "opencv2/gpu/gpu.hpp"
+#include "opencv2/imgproc.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+
 
 FftMethod::FftMethod(int i_frameSize,
                      int i_samplePointSize,
@@ -51,6 +55,9 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
             xi = i*samplePointSize;
             yi = j*samplePointSize;
             shift = cv::phaseCorrelate(imCurr(cv::Rect(xi,yi,samplePointSize,samplePointSize)),
+                                       imPrev(cv::Rect(xi,yi,samplePointSize,samplePointSize))
+                                       );
+            shift = cv::gpu::phphaseCorrelate(imCurr(cv::Rect(xi,yi,samplePointSize,samplePointSize)),
                                        imPrev(cv::Rect(xi,yi,samplePointSize,samplePointSize))
                                        );
             xShifts.at(i*sqNum + j) = shift.x;
