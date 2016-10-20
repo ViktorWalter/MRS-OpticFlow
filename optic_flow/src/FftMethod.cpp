@@ -98,6 +98,12 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
 
 double FftMethod::weightedMean(std::vector<double> *ar, double min, double max){
     // sort numbers from array into bins and then preform weighted mean based on the number of numbers in each bin
+    double sum = 0;
+    for(int i = 0;i < ar->size();i++){
+        sum += ar->at(i);
+    }
+    return sum/((double)ar->size());
+    /*
     double step = (max-min)/((double)bins);
 
     std::fill(bin_arr.begin(),bin_arr.end(),0);
@@ -132,7 +138,7 @@ double FftMethod::weightedMean(std::vector<double> *ar, double min, double max){
         curr_bound += step;
 
     }*/
-
+/*
     j = 0;
     int cbi = 0; // current bin starting index
     double loc_sum = 0;
@@ -150,4 +156,5 @@ double FftMethod::weightedMean(std::vector<double> *ar, double min, double max){
     }
 
     return sum/((double)ar->size());
+  */
 }
