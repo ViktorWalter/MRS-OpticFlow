@@ -272,12 +272,10 @@ private:
 
             ROS_INFO("vxr = %f; vyr=%f",out.x,out.y);
             double vxm, vym, vam;
-            vxm = out.x*(trueRange/fx)/dur.toSec();
-            vym = out.y*(trueRange/fy)/dur.toSec();
+            vxm = (out.x*(trueRange/fx) - tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
+            vym = (out.y*(trueRange/fy) + tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
 
             //angular vel. corr (not with Z ax.)
-            vxm = vxm - angVel.y * trueRange;
-            vym = vym - angVel.x * trueRange;
 
             vam = sqrt(vxm*vxm+vym*vym);
             ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
@@ -286,7 +284,8 @@ private:
             velocity.linear.x = vxm;
             velocity.linear.y = vym;
             velocity.linear.z = Zvelocity;
-            VelocityPublisher.publish(velocity);VelocityPublisher;
+            velocity.angular.z = trueRange;
+            VelocityPublisher.publish(velocity);
 
         }else{
 

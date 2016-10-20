@@ -57,9 +57,6 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
             shift = cv::phaseCorrelate(imCurr(cv::Rect(xi,yi,samplePointSize,samplePointSize)),
                                        imPrev(cv::Rect(xi,yi,samplePointSize,samplePointSize))
                                        );
-            shift = cv::gpu::phphaseCorrelate(imCurr(cv::Rect(xi,yi,samplePointSize,samplePointSize)),
-                                       imPrev(cv::Rect(xi,yi,samplePointSize,samplePointSize))
-                                       );
             xShifts.at(i*sqNum + j) = shift.x;
             yShifts.at(i*sqNum + j) = shift.y;
 
