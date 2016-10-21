@@ -3,13 +3,21 @@
 	<arg name="uav_name" default="$(optenv UAV_NAME uav)"/>
 	<arg name="gui" default="true"/>
 	<arg name="useCuda" default="true"/>
-        <arg name="method" default="0"/>
-	<arg name="camera" default="mv_25001879"/>
+        <arg name="method" default="3"/>
+        <arg name="camera" default="mv_26805877"/>
 	<group ns="$(arg uav_name)">
-        <arg name="SamplePointSize" default="8"/>
+        <arg name="SamplePointSize" default="80"/>
         <arg name="ScanRadius" default="4"/>
         <arg name="StepSize" default="0"/>
         <arg name="NumberOfBins" default="20"/>
+        <arg name="FrameSize" default="240"/>
+        <arg name="publish" default="true"/>
+        <arg name="useOdom" default="false"/>
+
+
+
+
+
 
 		<node name="teraranger" pkg="terarangerone" type="terarangerone_node" output="screen">		
 		<param name="Mode" value="2"/>
@@ -18,9 +26,9 @@
 
     <!-- Node -->
     <node pkg="bluefox2" type="bluefox2_single_node" name="$(arg camera)" output="screen">
-        <param name="identifier" type="string" value="25001879"/>
-        <param name="frame_id" type="string" value="mv_25001879"/>
-        <param name="camera_name" type="string" value="mv_25001879"/>
+        <param name="identifier" type="string" value="26805877"/>
+        <param name="frame_id" type="string" value="$(arg camera)"/>
+        <param name="camera_name" type="string" value="$(arg camera)"/>
         <param name="calib_url" type="string" value="file://${ROS_HOME}/camera_info/$(arg camera).yaml"/>
         <param name="fps" type="double" value="170"/>
         <param name="idpf" type="int" value="0"/>
@@ -54,7 +62,7 @@
 	  	<node name="optic_flow" pkg="optic_flow" type="optic_flow_node" output="screen" >
 			<param name="DEBUG"		type="bool" value="$(arg DEBUG)"/> 
 			<param name="gui"             type="bool" value="$(arg gui)"/>
-		 	<param name="FrameSize"       type="int" value="240"/>
+                        <param name="FrameSize"       type="int" value="$(arg FrameSize)"/>
                         <param name="SamplePointSize" type="int" value="$(arg SamplePointSize)"/>
                         <param name="ScanRadius"    type="int" value="$(arg ScanRadius)"/>
                         <param name="StepSize"	type="int" value="$(arg StepSize)"/>
@@ -62,6 +70,14 @@
         		<param name="useCuda"		type="bool" value="$(arg useCuda)"/>
                         <param name="method"	type="int" value="$(arg method)"/>
                         <param name="NumberOfBins"	type="int" value="$(arg NumberOfBins)"/>
+                        <param name="publish"         type="bool" value="$(arg publish)"/>
+                        <param name="ScaleFactor"	type="int" value="1"/>
+
+                        <param name="CameraImagePath"    type="string" value="/uav/mv_26805877/image_raw"/>
+                        <!--param name="RangerDataPath"    type="string" value="/uav/terarangerone/range"/-->
+                        <param name="CameraImageCompressed"    type="bool" value="false"/>
+
+                        <param name="useOdom"           type="bool" value="$(arg useOdom)"/>
 	  	</node>
 	</group>
 </launch>
