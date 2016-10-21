@@ -17,7 +17,7 @@
         <arg name="useOdom" default="true"/>
 		  	
 	  	
-                <node pkg="rosbag" type="play" name="player"  args="--clock /home/tomas/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/_2016-08-17-15-12-58_circle_new_cross_rtk.bag" />
+                <node pkg="rosbag" type="play" name="player"  args="--clock $(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/_2016-08-17-15-12-58_circle_new_cross_rtk.bag" />
 		
                 <!--/home/tomas/ros_workspace/src/mbzirc/bag_files/_2016-08-17-15-42-30_cross_above_car_piksi.bag-->
 
@@ -48,7 +48,7 @@
                         <param name="NumberOfBins"	type="int" value="$(arg NumberOfBins)"/>
                 </node>
 	  	
-                <node pkg="rosbag" type="record" name="recorder"  args="/uav4/mbzirc_odom/precise_odom /optFlow/velocity /optFlow/velocity -O /home/tomas/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/outputs/SpeedCompareB$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize)F$(arg FrameSize).bag" />
+                <node pkg="rosbag" type="record" name="recorder"  args="/uav4/mbzirc_odom/precise_odom /optFlow/velocity /optFlow/velocity -O /$(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/outputs/SpeedCompareB$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize)F$(arg FrameSize).bag" />
 
 	</group>
 </launch>
