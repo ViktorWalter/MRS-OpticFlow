@@ -176,6 +176,8 @@ public:
         //image_transport::ImageTransport iTran(node);
 
         VelocityPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity", 1);
+        VelocityRawPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity-raw", 1);
+
 
         RangeSubscriber = node.subscribe(RangerPath,1,&OpticFlow::RangeCallback, this);
 
@@ -300,6 +302,16 @@ private:
 
             ROS_INFO("vxr = %f; vyr=%f",out.x,out.y);
             double vxm, vym, vam;
+
+            vxm = (out.x*(trueRange/fx))/dur.toSec();
+            vym = (out.y*(trueRange/fy))/dur.toSec();
+            geometry_msgs::Twist velocity;
+            velocity.linear.x = vxm;
+            velocity.linear.y = vym;
+            velocity.linear.z = Zvelocity;
+            velocity.angular.z = trueRange;
+            VelocityPublisher.publish(velocity);
+
             vxm = (out.x*(trueRange/fx) - tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
             vym = (out.y*(trueRange/fy) + tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
 
@@ -308,12 +320,12 @@ private:
             vam = sqrt(vxm*vxm+vym*vym);
             ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
 
-            geometry_msgs::Twist velocity;
             velocity.linear.x = vxm;
             velocity.linear.y = vym;
             velocity.linear.z = Zvelocity;
             velocity.angular.z = trueRange;
             VelocityPublisher.publish(velocity);
+
 
         }else{
 
@@ -538,7 +550,7 @@ private:
         velocity.linear.x = vxm;
         velocity.linear.y = vym;
         velocity.linear.z = Zvelocity;
-        VelocityPublisher.publish(velocity);VelocityPublisher;
+        VelocityPublisher.publish(velocity);
 
 
         if (gui)
@@ -791,7 +803,9 @@ private:
 
     ros::Subscriber ImageSubscriber;
     ros::Subscriber RangeSubscriber;
-    ros::Publisher VelocityPublisher;
+    ros::Publisher VelocityPublisher;    
+    ros::Publisher VelocityRawPublisher;
+
     ros::Subscriber TiltSubscriber;
 
 
