@@ -6,8 +6,7 @@ BlockMethod::BlockMethod(int i_frameSize,
                       int i_scanRadius,
                       int i_scanDiameter,
                       int i_scanCount,
-                      int i_stepSize
-                  )
+                      int i_stepSize)
     {
     frameSize = i_frameSize;
     samplePointSize = i_samplePointSize;
@@ -32,7 +31,8 @@ BlockMethod::BlockMethod(int i_frameSize,
 
 cv::Point2f BlockMethod::processImage(cv::Mat imCurr,
                                               bool gui,
-                                              bool debug){
+                                              bool debug,
+                                      cv::Point midPoint){
 
     // save image for gui
     if(gui)

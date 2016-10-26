@@ -3,8 +3,7 @@
 
 
 FarnMethod::FarnMethod(int i_samplePointSize,
-                       int i_numberOfBins
-                       )
+                       int i_numberOfBins)
     {
     samplePointSize = i_samplePointSize;
     scanRadius = i_numberOfBins;
@@ -12,7 +11,10 @@ FarnMethod::FarnMethod(int i_samplePointSize,
 
 cv::Point2f FarnMethod::processImage(cv::Mat imCurr_t,
                                               bool gui,
-                                              bool debug){
+                                              bool debug,
+                                            cv::Point midPoint
+                                     )
+{
 
 
 

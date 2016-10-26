@@ -9,8 +9,6 @@
 class FftMethod: public OpticFlowCalc
 {
 private:
-    cv::Mat imPrev;
-    cv::Mat imView;
 
     int frameSize;
     int samplePointSize;
@@ -33,10 +31,9 @@ private:
 public:
     FftMethod(int i_frameSize,
                 int i_samplePointSize,
-                int i_numberOfBins
-                );
+                int i_numberOfBins);
 
-    virtual cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug);
+    virtual cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug,cv::Point midPoint);
 
 private:
     double weightedMean(std::vector<double>* ar,double min, double max);

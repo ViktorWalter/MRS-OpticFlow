@@ -45,9 +45,9 @@ class BlockMethod: public OpticFlowCalc
                 int scanDiameter,
                 int scanCount,
                 int stepSize
-                );
+            );
 
-    cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug);
+    cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug,cv::Point midPoint);
 
 
 

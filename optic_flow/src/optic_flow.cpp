@@ -114,14 +114,12 @@ public:
         xHist = new int[scanDiameter];
         yHist = new int[scanDiameter];
 
-        imPrev = cv::Mat(frameSize,frameSize,CV_8UC1);
-        imPrev = cv::Scalar(0);
 
         if (useCuda)
         {
             ResetCudaDevice();
             imPrev_g.create(imPrev.size(),imPrev.type());
-            imCurr_g.create(imCurr.size(),imCurr.type());
+            imCurr_g.create(imPrev.size(),imPrev.type());
         }
 
 
@@ -168,6 +166,10 @@ public:
         }
 
 
+        imPrev = cv::Mat(frameSize,frameSize,CV_8UC1);
+        imPrev = cv::Scalar(0);
+        processClass->setImPrev(imPrev);
+
 
         begin = ros::Time::now();
 
@@ -176,13 +178,13 @@ public:
         //image_transport::ImageTransport iTran(node);
 
         VelocityPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity", 1);
-        VelocityRawPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity-raw", 1);
+        VelocityRawPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity_raw", 1);
 
 
         RangeSubscriber = node.subscribe(RangerPath,1,&OpticFlow::RangeCallback, this);
 
         if (useOdom)
-            TiltSubscriber = node.subscribe("/uav4/mbzirc_odom/precise_odom",1,&OpticFlow::CorrectTilt, this);
+            TiltSubscriber = node.subscribe("/uav5/mbzirc_odom/precise_odom",1,&OpticFlow::CorrectTilt, this);
 
         if (ImgCompressed)
             ImageSubscriber = node.subscribe(ImgPath, 1, &OpticFlow::ProcessCompressed, this);
@@ -298,7 +300,7 @@ private:
 
         if(useProcessClass){
             ROS_INFO("Using process class");
-            cv::Point2f out = processClass->processImage(imCurr,gui,DEBUG);
+            cv::Point2f out = processClass->processImage(imCurr,gui,DEBUG,midPoint);
 
             ROS_INFO("vxr = %f; vyr=%f",out.x,out.y);
             double vxm, vym, vam;

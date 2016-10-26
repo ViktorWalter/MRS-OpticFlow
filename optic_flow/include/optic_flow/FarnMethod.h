@@ -27,10 +27,9 @@ private:
 
 public:
     FarnMethod(int i_samplePointSize,
-                int i_numberOfBins
-                );
+                int i_numberOfBins);
 
-    virtual cv::Point2f processImage(cv::Mat imCurr_t,bool gui,bool debug);
+    virtual cv::Point2f processImage(cv::Mat imCurr_t,bool gui,bool debug,cv::Point midPoint);
 
 private:
     void showFlow(const char* name, const cv::gpu::GpuMat& d_flow_x, const cv::gpu::GpuMat& d_flow_y);

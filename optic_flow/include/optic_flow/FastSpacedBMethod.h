@@ -19,11 +19,6 @@ private:
     cv::gpu::GpuMat flowX_g;
     cv::gpu::GpuMat flowY_g;
 
-    cv::Mat imCurr;
-    cv::Mat imPrev;
-    cv::Mat imView;
-
-    cv::Point2i midPoint;
 
     int samplePointSize;
     int scanRadius;
@@ -40,10 +35,11 @@ public:
                                          int i_k1,int i_k2,int i_k3,int i_p1,int i_p2
                            );
 
-    virtual cv::Point2f processImage(cv::Mat imCurr_t,bool gui,bool debug);
+    cv::Point2f processImage(cv::Mat imCurr_t,bool gui,bool debug,
+                                     cv::Point midPoint_t);
 
 private:
-    void showFlow(const char* name, const cv::gpu::GpuMat flowx_g, const cv::gpu::GpuMat flowy_g, signed char vXin, signed char vYin);
+    void showFlow(const cv::gpu::GpuMat flowx_g, const cv::gpu::GpuMat flowy_g, signed char vXin, signed char vYin);
     void drawOpticalFlow(const cv::Mat_<signed char>& flowx, const cv::Mat_<signed char>& flowy, cv::Mat& dst, float maxmotion,
                          int step);
 

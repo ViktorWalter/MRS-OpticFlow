@@ -6,8 +6,7 @@
 
 FftMethod::FftMethod(int i_frameSize,
                      int i_samplePointSize,
-                     int i_numberOfBins
-                  )
+                     int i_numberOfBins)
     {
     frameSize = i_frameSize;
     samplePointSize = i_samplePointSize;
@@ -32,7 +31,8 @@ FftMethod::FftMethod(int i_frameSize,
 
 cv::Point2f FftMethod::processImage(cv::Mat imCurr,
                                               bool gui,
-                                              bool debug){
+                                              bool debug,
+                                    cv::Point midPoint){
 
     if(gui)
         imView = imCurr.clone();

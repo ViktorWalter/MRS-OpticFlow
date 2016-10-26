@@ -3,8 +3,7 @@
 
 
 Tvl1Method::Tvl1Method(int i_samplePointSize,
-                       int i_numberOfBins
-                       )
+                       int i_numberOfBins)
     {
     samplePointSize = i_samplePointSize;
     scanRadius = i_numberOfBins;

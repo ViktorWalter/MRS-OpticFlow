@@ -174,17 +174,17 @@ __global__ void _CorrectLensDist_kernel(    const cv::gpu::PtrStepSz<signed char
 
     dxn = dx;
     dyn = dy;
-
-    for (int i = 0; i++; i<5)
+*/
+    /*for (int i = 0; i++; i<5)
     {
         r2 = (px*px + py*py);
         dxn = (x0 - 2*p1*x*y + kp2*(r2 + 2*x*x))/(1 + k1*r2 + k2*r2*r2 + k3*r2*r2*r2);
         dyn = (y0 - p1*(r2 + 2*y*y) + 2*p2*x*y)/(1 + k1*r2 + k2*r4 + k3*r6);
-    }
+    }*/
 
-}
+//}
 
-*/
+
 
 __global__ void _CopyMatrix(const cv::gpu::PtrStepSzb input,
                             cv::gpu::PtrStepb output,
@@ -215,7 +215,8 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     const cv::gpu::GpuMat imCurr = _imCurr.getGpuMat();
     if (imPrev.size() != imCurr.size())
     {
-        std::fprintf(stderr,"Input images do not match in sizes!");
+        std::fprintf(stderr,"Input images do not match in sizes! \nPrev:%dx%d; Curr:%dx%d",
+                       imPrev.size().width,imPrev.size().height,imCurr.size().width,imCurr.size().height);
         std::cin.get();
         exit(EXIT_FAILURE);
     }
@@ -244,7 +245,7 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
 
     SAFE_CALL(cudaDeviceSynchronize(),"Matrix creation Failed 1");
 
-    _FastSpacedBMOptFlow_kernel<<<grid,block,0>>>(imPrev,imCurr,imOutX_raw,imOutY_raw,
+    _FastSpacedBMOptFlow_kernel<<<grid,block,0>>>(imPrev,imCurr,imOutX,imOutY,
                                                 blockSize,blockStep,scanRadius,
                                                 imCurr.cols, imCurr.rows);
 
@@ -262,8 +263,8 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
     cudaMalloc(&outY_g, sizeof(signed char));
 
     SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 2");
-    //_HistogramMaximum<<<1,grid,2>>>(imOutX,scanRadius, scanDiameter,outX_g);
-    //_HistogramMaximum<<<1,grid,2>>>(imOutY,scanRadius, scanDiameter,outY_g);
+    _HistogramMaximum<<<1,grid,2>>>(imOutX,scanRadius, scanDiameter,outX_g);
+    _HistogramMaximum<<<1,grid,2>>>(imOutY,scanRadius, scanDiameter,outY_g);
 
 
     SAFE_CALL(cudaDeviceSynchronize(),"Kernel Launch Failed 3");

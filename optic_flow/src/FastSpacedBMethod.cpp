@@ -4,9 +4,9 @@ FastSpacedBMethod::FastSpacedBMethod(int i_samplePointSize,
                                      int i_scanRadius,
                                      int i_stepSize,
                                      int i_cx,int i_cy,int i_fx,int i_fy,
-                                     int i_k1,int i_k2,int i_k3,int i_p1,int i_p2
-                       )
+                                     int i_k1,int i_k2,int i_k3,int i_p1,int i_p2)
     {
+
     samplePointSize = i_samplePointSize;
     scanRadius = i_scanRadius;
     stepSize = i_stepSize;
@@ -23,7 +23,10 @@ FastSpacedBMethod::FastSpacedBMethod(int i_samplePointSize,
 
 cv::Point2f FastSpacedBMethod::processImage(cv::Mat imCurr_t,
                                               bool gui,
-                                              bool debug){
+                                              bool debug,
+                                             cv::Point midPoint_t)
+{
+    midPoint = midPoint_t;
 
     signed char outputX;
     signed char outputY;
@@ -46,14 +49,16 @@ cv::Point2f FastSpacedBMethod::processImage(cv::Mat imCurr_t,
     }
     if (gui)
     {
-        showFlow("TVL1", flowX_g, flowY_g, outputX, outputY);
+        showFlow(flowX_g, flowY_g, outputX, outputY);
     }
+
+    imPrev = imCurr.clone();
 
     return cv::Point2f(outputX,outputY);
 
 }
 
-void FastSpacedBMethod::showFlow(const char* name, const cv::gpu::GpuMat flowx_g, const cv::gpu::GpuMat flowy_g, signed char vXin, signed char vYin)
+void FastSpacedBMethod::showFlow(const cv::gpu::GpuMat flowx_g, const cv::gpu::GpuMat flowy_g, signed char vXin, signed char vYin)
 {
     cv::Mat flowx = cv::Mat(flowx_g);
     cv::Mat flowy = cv::Mat(flowy_g);
