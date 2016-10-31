@@ -184,7 +184,7 @@ public:
         RangeSubscriber = node.subscribe(RangerPath,1,&OpticFlow::RangeCallback, this);
 
         if (useOdom)
-            TiltSubscriber = node.subscribe("/uav5/mbzirc_odom/precise_odom",1,&OpticFlow::CorrectTilt, this);
+            TiltSubscriber = node.subscribe("/uav5/mbzirc_odom/new_odom",1,&OpticFlow::CorrectTilt, this);
 
         if (ImgCompressed)
             ImageSubscriber = node.subscribe(ImgPath, 1, &OpticFlow::ProcessCompressed, this);
@@ -229,6 +229,8 @@ private:
         Zvelocity = odom_msg.twist.twist.linear.z;
 
         angVel = cv::Point2d(odom_msg.twist.twist.angular.x,odom_msg.twist.twist.angular.y);
+
+        ROS_INFO("tady: roll: %f pitch:%f",roll,pitch);
 
         if (currentRange > maxTerraRange)
         {
@@ -312,7 +314,7 @@ private:
             velocity.linear.y = vym;
             velocity.linear.z = Zvelocity;
             velocity.angular.z = trueRange;
-            VelocityPublisher.publish(velocity);
+            VelocityRawPublisher.publish(velocity);
 
             vxm = (out.x*(trueRange/fx) - tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
             vym = (out.y*(trueRange/fy) + tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
@@ -320,7 +322,7 @@ private:
             //angular vel. corr (not with Z ax.)
 
             vam = sqrt(vxm*vxm+vym*vym);
-            ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
+            ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f",vxm,vym,Zvelocity,vam,trueRange );
 
             velocity.linear.x = vxm;
             velocity.linear.y = vym;
