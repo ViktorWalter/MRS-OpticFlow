@@ -230,7 +230,6 @@ private:
 
         angVel = cv::Point2d(odom_msg.twist.twist.angular.y,odom_msg.twist.twist.angular.x);
 
-        ROS_INFO("tady: roll: %f pitch:%f",roll,pitch);
 
         if (currentRange > maxTerraRange)
         {
@@ -262,7 +261,8 @@ private:
     {
         if (first)
         {
-            ROS_INFO("Source img: %dx%d", image->image.cols, image->image.rows);
+            if(DEBUG)
+                ROS_INFO("Source img: %dx%d", image->image.cols, image->image.rows);
             first = false;
         }
 
@@ -272,7 +272,8 @@ private:
 #endif
 
         ros::Duration dur = ros::Time::now()-begin;
-        ROS_INFO("freq = %fHz",1.0/dur.toSec());
+        if(DEBUG)
+            ROS_INFO("freq = %fHz",1.0/dur.toSec());
         begin = ros::Time::now();
 
         if (ScaleFactor == 1)
@@ -301,10 +302,10 @@ private:
         //ROS_INFO("Here");
 
         if(useProcessClass){
-            ROS_INFO("Using process class");
             cv::Point2f out = processClass->processImage(imCurr,gui,DEBUG,midPoint);
 
-            ROS_INFO("vxr = %f; vyr=%f",out.x,out.y);
+            if(DEBUG)
+                ROS_INFO("vxr = %f; vyr=%f",out.x,out.y);
             double vxm, vym, vam;
 
             vxm = (out.x*(trueRange/fx))/dur.toSec();
@@ -322,7 +323,8 @@ private:
             //angular vel. corr (not with Z ax.)
 
             vam = sqrt(vxm*vxm+vym*vym);
-            ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f",vxm,vym,Zvelocity,vam,trueRange );
+            if(DEBUG)
+                ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f",vxm,vym,Zvelocity,vam,trueRange );
 
             velocity.linear.x = vxm;
             velocity.linear.y = vym;

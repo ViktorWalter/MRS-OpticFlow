@@ -48,7 +48,7 @@
                         <param name="NumberOfBins"	type="int" value="$(arg NumberOfBins)"/>
                 </node>
 	  	
-                <node pkg="rosbag" type="record" name="recorder"  args="/uav5/mbzirc_odom/new_odom /optFlow/velocity /optFlow/velocity_raw -O /$(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/outputs/SpeedCompareB$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize)F$(arg FrameSize).bag" />
+                <node pkg="rosbag" type="record" name="recorder"  args="/uav5/mbzirc_odom/new_odom /optFow/velocity /optFlow/velocity_raw -O /$(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/outputs/SpeedCompareB$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize)F$(arg FrameSize)-$(arg info).bag" />
 
 	</group>
 </launch>
