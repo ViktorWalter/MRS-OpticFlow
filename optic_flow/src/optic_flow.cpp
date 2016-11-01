@@ -115,6 +115,9 @@ public:
         yHist = new int[scanDiameter];
 
 
+        private_node_handle.param("cameraRotated", cameraRotated, bool(true));
+        private_node_handle.getParam("camera_rotation_matrix/data", camRot);
+
         if (useCuda)
         {
             ResetCudaDevice();
@@ -308,8 +311,9 @@ private:
                 ROS_INFO("vxr = %f; vyr=%f",out.x,out.y);
             double vxm, vym, vam;
 
-            vxm = (out.x*(trueRange/fx))/dur.toSec();
+            vxm = -(out.x*(trueRange/fx))/dur.toSec();
             vym = (out.y*(trueRange/fy))/dur.toSec();
+
             geometry_msgs::Twist velocity;
             velocity.linear.x = vxm;
             velocity.linear.y = vym;
@@ -317,8 +321,17 @@ private:
             velocity.angular.z = trueRange;
             VelocityRawPublisher.publish(velocity);
 
-            vxm = (out.x*(trueRange/fx) - tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
-            vym = (out.y*(trueRange/fy) + tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
+            if (cameraRotated)
+            {
+                double vxm_n = camRot[0]*vxm + camRot[1]*vym;
+                double vym_n = camRot[2]*vxm + camRot[3]*vym;
+
+                vxm = vxm_n;
+                vym = vym_n;
+            }
+
+            vxm = vxm + (tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
+            vym = vym + (tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
 
             //angular vel. corr (not with Z ax.)
 
@@ -837,6 +850,8 @@ private:
     cv::Mat absDiffsMat;
     cv::Mat absDiffsMatSubpix;
 
+    std::vector<double> camRot;
+
     int expectedWidth;
     int ScaleFactor;
 
@@ -880,6 +895,8 @@ private:
     OpticFlowCalc *processClass;
 
     bool useProcessClass;
+
+    bool cameraRotated;
 
 
 };

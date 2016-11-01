@@ -7,6 +7,7 @@
         <arg name="DEBUG" default="false"/>
         <arg name="useCuda" default="true"/>
         <arg name="method" default="3"/>
+        <arg name="info" default=""/>
 
         <arg name="FrameSize" default="240"/>
         <arg name="SamplePointSize" default="8"/>
@@ -15,6 +16,8 @@
         <arg name="NumberOfBins" default="20"/>
 	
         <arg name="useOdom" default="true"/>
+
+        <arg name="cameraRotated" default="true"/>
 		  	
 	  	
                 <node pkg="rosbag" type="play" name="player"  args="--clock $(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/_2016-10-26-12-22-17_viktor_no_yaw_cbm3.bag -s 60" />
@@ -33,7 +36,7 @@
                         <param name="StepSize"	type="int" value="$(arg StepSize)"/>
 
         		<rosparam file="$(find optic_flow)/yaml/ost.yaml"/>
-
+                        <rosparam file="$(find optic_flow)/yaml/cam_rot.yaml"/>
         		
                         <param name="ScaleFactor"	type="int" value="1"/>
         		
@@ -46,9 +49,11 @@
 
                         <param name="useOdom"           type="bool" value="$(arg useOdom)"/>
                         <param name="NumberOfBins"	type="int" value="$(arg NumberOfBins)"/>
+
+                        <param name="cameraRotated"     type="bool" value="$(arg cameraRotated)"/>
                 </node>
 	  	
-                <node pkg="rosbag" type="record" name="recorder"  args="/uav5/mbzirc_odom/new_odom /optFow/velocity /optFlow/velocity_raw -O /$(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/outputs/SpeedCompareB$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize)F$(arg FrameSize)-$(arg info).bag" />
+                <node pkg="rosbag" type="record" name="recorder"  args="/uav5/mbzirc_odom/new_odom /optFlow/velocity /optFlow/velocity_raw -O /$(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/outputs/SpeedCompareB$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize)F$(arg FrameSize)-$(arg info).bag" />
 
 	</group>
 </launch>
