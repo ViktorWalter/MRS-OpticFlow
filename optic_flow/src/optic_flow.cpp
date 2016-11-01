@@ -228,7 +228,7 @@ private:
         tf::Matrix3x3(bt).getRPY(roll, pitch, yaw);
         Zvelocity = odom_msg.twist.twist.linear.z;
 
-        angVel = cv::Point2d(odom_msg.twist.twist.angular.x,odom_msg.twist.twist.angular.y);
+        angVel = cv::Point2d(odom_msg.twist.twist.angular.y,odom_msg.twist.twist.angular.x);
 
         ROS_INFO("tady: roll: %f pitch:%f",roll,pitch);
 
