@@ -317,8 +317,8 @@ private:
             velocity.angular.z = trueRange;
             VelocityRawPublisher.publish(velocity);
 
-            vxm = (out.x*(trueRange/fx) - tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
-            vym = (out.y*(trueRange/fy) + tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
+            vxm = (out.x*(trueRange/fx) - tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
+            vym = (out.y*(trueRange/fy) + tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
 
             //angular vel. corr (not with Z ax.)
 
