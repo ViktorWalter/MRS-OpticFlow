@@ -112,6 +112,7 @@ cv::Point2f BlockMethod::processImage(cv::Mat imCurr,
 
 
     imPrev = imCurr.clone();
+    return refined;
 }
 
 cv::Point2f BlockMethod::Refine(cv::Mat imCurr, cv::Mat imPrev, cv::Point2i fullpixFlow, int passes){

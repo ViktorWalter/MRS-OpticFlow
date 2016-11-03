@@ -341,6 +341,7 @@ private:
             velocity.angular.z = trueRange;
             VelocityRawPublisher.publish(velocity);
 
+            // camera rotation (within the construction) correction
             if (cameraRotated)
             {
                 double vxm_n = camRot[0]*vxm + camRot[1]*vym;
@@ -350,14 +351,20 @@ private:
                 vym = vym_n;
             }
 
+            // tilt correction
             vxm = vxm + (tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
             vym = vym + (tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
 
             //angular vel. corr (not with Z ax.)
 
+            // transform to global system
+            double vxm_n = vxm*sin(yaw)+vym*cos(yaw);
+            vym = -vxm*cos(yaw)+vym*sin(yaw);
+            vxm = vxm_n;
+
             vam = sqrt(vxm*vxm+vym*vym);
             if(DEBUG)
-                ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f",vxm,vym,Zvelocity,vam,trueRange );
+                ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f; yaw=%f",vxm,vym,Zvelocity,vam,trueRange,yaw );
 
             velocity.linear.x = vxm;
             velocity.linear.y = vym;
@@ -591,6 +598,7 @@ private:
         vym = refined.y*(trueRange/fy)/dur.toSec();
         vam = sqrt(vxm*vxm+vym*vym);
         ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f",vxm,vym,Zvelocity,vam );
+
 
         geometry_msgs::Twist velocity;
         velocity.linear.x = vxm;

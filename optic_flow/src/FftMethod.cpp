@@ -59,16 +59,14 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
                                        );
             if(abs(shift.x) > samplePointSize/2){
                 xShifts.at(i*sqNum + j) = nan("");
-                if(debug)
-                    ROS_INFO("FFT - invalid correlation X in rect %d %d",i,j);
+                ROS_WARN("FFT - invalid correlation X in rect %d %d",i,j);
             }else{
                 xShifts.at(i*sqNum + j) = shift.x;
             }
 
             if(abs(shift.y) > samplePointSize/2){
                 yShifts.at(i*sqNum + j) = nan("");
-                if(debug)
-                    ROS_INFO("FFT - invalid correlation Y in rect %d %d",i,j);
+                ROS_WARN("FFT - invalid correlation Y in rect %d %d",i,j);
             }else{
                 yShifts.at(i*sqNum + j) = shift.y;
             }
