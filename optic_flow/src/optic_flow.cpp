@@ -88,6 +88,7 @@ public:
         private_node_handle.param("RangerDataPath", RangerPath, std::string("/uav/terarangerone"));
 
         private_node_handle.param("ScaleFactor", ScaleFactor, int(1));
+
         std::vector<double> camMat;
         private_node_handle.getParam("camera_matrix/data", camMat);
         fx = camMat[0];
@@ -264,6 +265,21 @@ private:
     {
         if (first)
         {
+            if (ScaleFactor == 1)
+            {
+                int parameScale = image->image.cols/expectedWidth;
+                fx = fx*parameScale;
+                cx = cx*parameScale;
+                fy = fy*parameScale;
+                cy = cy*parameScale;
+                k1 = k1*parameScale;
+                k2 = k2*parameScale;
+                k3 = k3*parameScale;
+                p1 = p1*parameScale;
+                p2 = p2*parameScale;
+
+            }
+
             if(DEBUG)
                 ROS_INFO("Source img: %dx%d", image->image.cols, image->image.rows);
             first = false;
@@ -279,15 +295,14 @@ private:
             ROS_INFO("freq = %fHz",1.0/dur.toSec());
         begin = ros::Time::now();
 
-        if (ScaleFactor == 1)
-        {
-            ScaleFactor = image->image.cols/expectedWidth;
-        }
+
 
         if (ScaleFactor != 1)
             cv::resize(image->image,imOrigScaled,cv::Size(image->image.size().width/ScaleFactor,image->image.size().height/ScaleFactor));
         else
             imOrigScaled = image->image.clone();
+
+        ROS_INFO("Here 1");
 
         if (!coordsAcquired)
         {
@@ -299,10 +314,10 @@ private:
             midPoint = cv::Point2i((frameSize/2),(frameSize/2));
         }
 
-
+        ROS_INFO("Here 2");
 
         cv::cvtColor(imOrigScaled(frameRect),imCurr,CV_RGB2GRAY);
-        //ROS_INFO("Here");
+        ROS_INFO("Here 3");
 
         if(useProcessClass){
             cv::Point2f out = processClass->processImage(imCurr,gui,DEBUG,midPoint);
