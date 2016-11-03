@@ -46,18 +46,32 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
     if(debug)
        ROS_INFO("Curr type: %d prev type: %d",imCurr.type(),imPrev.type());
 
-    imCurr.convertTo(imCurr, CV_32FC1);
-    imPrev.convertTo(imPrev, CV_32FC1);
+    cv::Mat imCurrF, imPrevF;
+    imCurr.convertTo(imCurrF, CV_32FC1);
+    imPrev.convertTo(imPrevF, CV_32FC1);
 
     for(int i = 0;i< sqNum;i++){
         for(int j = 0;j<sqNum;j++){
             xi = i*samplePointSize;
             yi = j*samplePointSize;
-            shift = cv::phaseCorrelate(imCurr(cv::Rect(xi,yi,samplePointSize,samplePointSize)),
-                                       imPrev(cv::Rect(xi,yi,samplePointSize,samplePointSize))
+            shift = cv::phaseCorrelate(imCurrF(cv::Rect(xi,yi,samplePointSize,samplePointSize)),
+                                       imPrevF(cv::Rect(xi,yi,samplePointSize,samplePointSize))
                                        );
-            xShifts.at(i*sqNum + j) = shift.x;
-            yShifts.at(i*sqNum + j) = shift.y;
+            if(abs(shift.x) > samplePointSize/2){
+                xShifts.at(i*sqNum + j) = nan("");
+                if(debug)
+                    ROS_INFO("FFT - invalid correlation X in rect %d %d",i,j);
+            }else{
+                xShifts.at(i*sqNum + j) = shift.x;
+            }
+
+            if(abs(shift.y) > samplePointSize/2){
+                yShifts.at(i*sqNum + j) = nan("");
+                if(debug)
+                    ROS_INFO("FFT - invalid correlation Y in rect %d %d",i,j);
+            }else{
+                yShifts.at(i*sqNum + j) = shift.y;
+            }
 
             if(gui){
                 cv::line(imView,
@@ -94,6 +108,7 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
     }
 
 
+
     return cv::Point2f(xout,yout);
 }
 
@@ -102,10 +117,17 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
 double FftMethod::weightedMean(std::vector<double> *ar, double min, double max){
     // sort numbers from array into bins and then preform weighted mean based on the number of numbers in each bin
     double sum = 0;
+    int size = 0;
     for(int i = 0;i < ar->size();i++){
-        sum += ar->at(i);
+        if(!isnan(ar->at(i))){
+            sum += ar->at(i);
+            size += 1;
+        }
     }
-    return sum/((double)ar->size());
+    if(size == 0)
+        return nan("");
+    else
+        return sum/((double)size);
     /*
     double step = (max-min)/((double)bins);
 

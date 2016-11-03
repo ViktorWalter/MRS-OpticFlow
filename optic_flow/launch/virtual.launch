@@ -20,7 +20,7 @@
         <arg name="cameraRotated" default="true"/>
 		  	
 	  	
-                <node pkg="rosbag" type="play" name="player"  args="--clock $(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/_2016-10-27-17-37-08_viktor_yaw_cbm0.bag -s 60" />
+                <node pkg="rosbag" type="play" name="player"  args="--clock $(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/_2016-10-27-17-37-08_viktor_yaw_cbm0.bag -s 0" />
 		
                 <!--/home/tomas/ros_workspace/src/mbzirc/bag_files/_2016-08-17-15-42-30_cross_above_car_piksi.bag-->
 

@@ -291,9 +291,10 @@ private:
 #endif
 
         ros::Duration dur = ros::Time::now()-begin;
+        begin = ros::Time::now();
         if(DEBUG)
             ROS_INFO("freq = %fHz",1.0/dur.toSec());
-        begin = ros::Time::now();
+
 
 
 
@@ -302,7 +303,7 @@ private:
         else
             imOrigScaled = image->image.clone();
 
-        ROS_INFO("Here 1");
+        //ROS_INFO("Here 1");
 
         if (!coordsAcquired)
         {
@@ -314,14 +315,18 @@ private:
             midPoint = cv::Point2i((frameSize/2),(frameSize/2));
         }
 
-        ROS_INFO("Here 2");
+        //ROS_INFO("Here 2");
 
         cv::cvtColor(imOrigScaled(frameRect),imCurr,CV_RGB2GRAY);
-        ROS_INFO("Here 3");
+       // ROS_INFO("Here 3");
 
         if(useProcessClass){
             cv::Point2f out = processClass->processImage(imCurr,gui,DEBUG,midPoint);
 
+            if(isnan(out.x) || isnan(out.y)){
+                ROS_WARN("Processing function returned invalid value!");
+                return;
+            }
             if(DEBUG)
                 ROS_INFO("vxr = %f; vyr=%f",out.x,out.y);
             double vxm, vym, vam;
@@ -359,6 +364,13 @@ private:
             velocity.linear.z = Zvelocity;
             velocity.angular.z = trueRange;
             VelocityPublisher.publish(velocity);
+
+
+            /*if(abs(vxm) > 1000)
+            {
+                ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f\ntime=%f; rawRange=%f; yaw=%f pitch=%f; roll=%f\nangvelX=%f; angVelY=%f\nxp=%f; yp=%f",vxm,vym,Zvelocity,vam,trueRange,dur.toSec(),currentRange,yaw,pitch,roll,angVel.x,angVel.y,out.x,out.y );
+
+            }*/
 
 
         }else{
