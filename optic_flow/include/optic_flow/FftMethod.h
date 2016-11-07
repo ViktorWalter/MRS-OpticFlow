@@ -3,6 +3,9 @@
 
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 #include <image_transport/image_transport.h>
 #include "optic_flow/OpticFlowCalc.h"
 

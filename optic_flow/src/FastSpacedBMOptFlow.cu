@@ -1,3 +1,4 @@
+#ifdef CUDA_SUPPORTED
 #include "optic_flow/FastSpacedBMOptFlow.h"
 
 #include <iostream>
@@ -280,3 +281,4 @@ void FastSpacedBMOptFlow(cv::InputArray _imPrev, cv::InputArray _imCurr,
    outY = outY_l;
 
 }
+#endif

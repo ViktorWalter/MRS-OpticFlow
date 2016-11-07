@@ -1,9 +1,5 @@
 #include "../include/optic_flow/FftMethod.h"
 
-#include "opencv2/gpu/gpu.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-
-
 FftMethod::FftMethod(int i_frameSize,
                      int i_samplePointSize,
                      int i_numberOfBins)

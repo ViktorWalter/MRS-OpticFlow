@@ -35,7 +35,9 @@ else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMY_DEF=1")
 endif()
 
-find_package(OpenCV REQUIRED)
+
+#find_package(OpenCV REQUIRED)
+set(OpenCV_DIR "~/opencv/build")
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -101,10 +103,11 @@ add_library(farn_method src/FarnMethod.cpp)
 add_library(tvl1_method src/Tvl1Method.cpp)
 add_library(fastSpaced_method src/FastSpacedBMethod.cpp)
 
+target_link_libraries(fft_method ${OpenCV_LIBRARIES})
+target_link_libraries(block_method ${OpenCV_LIBRARIES})
+
 ## Declare a C++ executable
 add_executable(optic_flow_node src/optic_flow.cpp)
-
-
 
 
 ## Add cmake target dependencies of the executable

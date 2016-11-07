@@ -1,4 +1,6 @@
+#ifdef CUDA_SUPPORTED
 #include "../include/optic_flow/FastSpacedBMethod.h"
+
 
 FastSpacedBMethod::FastSpacedBMethod(int i_samplePointSize,
                                      int i_scanRadius,
@@ -102,3 +104,4 @@ void FastSpacedBMethod::drawOpticalFlow(const cv::Mat_<signed char>& flowx, cons
     }
     dst = imView;
 }
+#endif

@@ -1,3 +1,4 @@
+#ifdef CUDA_SUPPORTED
 #include "../include/optic_flow/Tvl1Method.h"
 
 
@@ -95,3 +96,4 @@ void Tvl1Method::drawOpticalFlow(const cv::Mat_<signed char>& flowx, const cv::M
     }
     dst = imView;
 }
+#endif

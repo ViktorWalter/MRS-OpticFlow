@@ -1,3 +1,4 @@
+#ifdef CUDA_SUPPORTED
 #include "../include/optic_flow/FarnMethod.h"
 
 
@@ -92,4 +93,4 @@ void FarnMethod::drawOpticalFlow(const cv::Mat_<signed char>& flowx, const cv::M
     dst = imView;
 }
 
-
+#endif

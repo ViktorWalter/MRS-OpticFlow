@@ -1,3 +1,4 @@
+#ifdef CUDA_SUPPORTED
 #include "../include/optic_flow/BroxMethod.h"
 
 BroxMethod::BroxMethod(int samplePointSize_t,int scanRadius_t)
@@ -95,3 +96,4 @@ void BroxMethod::drawOpticalFlow(const cv::Mat_<signed char>& flowx, const cv::M
     }
     dst = imView;
 }
+#endif //CUDA_SUPPORTED

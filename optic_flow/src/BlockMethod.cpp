@@ -180,5 +180,3 @@ cv::Point2f BlockMethod::Refine(cv::Mat imCurr, cv::Mat imPrev, cv::Point2i full
 
 
 
-
-
