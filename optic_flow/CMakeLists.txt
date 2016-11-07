@@ -36,8 +36,23 @@ else()
 endif()
 
 
-#find_package(OpenCV REQUIRED)
-set(OpenCV_DIR "~/opencv/build")
+find_package(OpenCV REQUIRED)
+#set(OpenCV_DIR "~/opencv/build")
+
+#unset(OpenCV_CONFIG_PATH CACHE)
+#unset(OpenCV_DIR CACHE)
+
+#set(TMP_PREFIX_PATH ${CMAKE_PREFIX_PATH})
+
+#set(CMAKE_PREFIX_PATH "$ENV{HOME}/opencv/build")
+#find_package(OpenCV 3.1.0 REQUIRED)
+
+#set(CMAKE_PREFIX_PATH ${TMP_PREFIX_PATH})
+
+#unset(OpenCV_CONFIG_PATH CACHE)
+#unset(OpenCV_DIR CACHE)
+
+
 
 ################################################
 ## Declare ROS messages, services and actions ##

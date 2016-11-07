@@ -143,6 +143,8 @@ public:
             ROS_WARN("Method does not have cuda/noncuda version.");
         }
 
+
+
         switch(method){
             #ifdef CUDA_SUPPORTED
             case 0:
@@ -168,17 +170,18 @@ public:
                     processClass = new FastSpacedBMethod(samplePointSize,scanRadius,stepSize,cx,cy,fx,fy,k1,k2,k3,p1,p2);
                     #endif
                 }else{
-                    //processClass = new BlockMethod(frameSize,samplePointSize,scanRadius,scanDiameter,scanCount,stepSize);
+                    processClass = new BlockMethod(frameSize,samplePointSize,scanRadius,scanDiameter,scanCount,stepSize);
                 }
                 break;
             }
             case 4:
             {
-                //processClass = new  FftMethod(frameSize,samplePointSize,numberOfBins);
+                processClass = new  FftMethod(frameSize,samplePointSize,numberOfBins);
                 break;
             }
 
         }
+
 
 
         imPrev = cv::Mat(frameSize,frameSize,CV_8UC1);
@@ -207,7 +210,6 @@ public:
         }else{
             ImageSubscriber = node.subscribe(ImgPath, 1, &OpticFlow::ProcessRaw, this);
         }
-
 
     }
     ~OpticFlow(){
