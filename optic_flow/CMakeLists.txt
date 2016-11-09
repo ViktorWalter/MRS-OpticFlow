@@ -26,7 +26,7 @@ if(NOT EIGEN3_FOUND)
   set(EIGEN3_LIBRARIES ${EIGEN_LIBRARIES})
 endif()
 
-find_package(CUDA 6.5 REQUIRED)
+find_package(CUDA 6.5)
 if(NOT CUDA_FOUND)
     message("CUDA NOT FOUND")
 else()
@@ -102,14 +102,20 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${CUDA_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-cuda_compile(fsbmof STATIC src/FastSpacedBMOptFlow.cu)
-cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu)
+
+if(CUDA_FOUND)
+    include_directories(
+    include
+    ${CUDA_INCLUDE_DIRS}
+    )
+    cuda_compile(fsbmof STATIC src/FastSpacedBMOptFlow.cu)
+    cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu)
+endif()
 
 add_library(block_method src/BlockMethod.cpp)
 add_library(fft_method src/FftMethod.cpp)
