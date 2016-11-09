@@ -143,9 +143,7 @@ target_link_libraries(brox_method  ${OpenCV_LIBRARIES})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(optic_flow_node
-    fsbmof
    ${catkin_LIBRARIES}
-   ${CUDA_LIBRARIES}
    ${OpenCV_LIBRARIES}
    ${EIGEN3_LIBRARIES}
 
@@ -156,4 +154,10 @@ target_link_libraries(optic_flow_node
     tvl1_method
     fastSpaced_method
 )
+if(CUDA_FOUND)
+  target_link_libraries(optic_flow_node
+  fsbmof
+  ${CUDA_LIBRARIES}
+  )
+endif()   
 
