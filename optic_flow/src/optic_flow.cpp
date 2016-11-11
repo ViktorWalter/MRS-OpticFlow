@@ -127,8 +127,8 @@ public:
 
 
         private_node_handle.param("cameraRotated", cameraRotated, bool(true));
-        private_node_handle.getParam("camera_rotation_matrix/data", camRot);
-
+        //private_node_handle.getParam("camera_rotation_matrix/data", camRot);
+        private_node_handle.getParam("alpha", gamma);
 
         if (useCuda)
         {
@@ -364,14 +364,14 @@ private:
         // CORRECTIONS
 
         // camera rotation (within the construction) correction
-        if (cameraRotated)
+        /*if (cameraRotated)
         {
             double vxm_n = camRot[0]*vxm + camRot[1]*vym;
             double vym_n = camRot[2]*vxm + camRot[3]*vym;
 
             vxm = vxm_n;
             vym = vym_n;
-        }
+        }*/
 
         // tilt correction
         vxm = vxm + (tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
@@ -382,8 +382,12 @@ private:
         vym = -vxm*cos(yaw)+vym*sin(yaw);
         vxm = vxm_n;*/
 
-        double vxm_n = vxm*cos(-yaw)-vym*sin(-yaw);
-        double vym_n = vxm*sin(-yaw)+vym*cos(-yaw);
+        double phi = -(-yaw-gamma+1.570796326794897);
+        double cs = cos(phi);// cos and sin of rot maxtrix
+        double sn = sin(phi);
+
+        double vxm_n = vxm*cs-vym*sn;
+        double vym_n = vxm*sn+vym*cs;
         vxm = vxm_n;
         vym = vym_n;
 
@@ -403,7 +407,7 @@ private:
         VelocityPublisher.publish(velocity);
 
         // Warn on wrong values
-        if(true || abs(vxm) > 1000 || abs(vym) > 1000)
+        if(abs(vxm) > 1000 || abs(vym) > 1000)
         {
             ROS_WARN("Suspiciously high velocity! vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f\ntime=%f; rawRange=%f; yaw=%f pitch=%f; roll=%f\nangvelX=%f; angVelY=%f\nxp=%f; yp=%f",vxm,vym,Zvelocity,vam,trueRange,dur.toSec(),currentRange,yaw,pitch,roll,angVel.x,angVel.y,out.x,out.y );
         }
@@ -444,7 +448,8 @@ private:
     // Input arguments
     bool DEBUG;
 
-    std::vector<double> camRot;
+    //std::vector<double> camRot;
+    double gamma; // rotation of camera in the helicopter frame (positive)
 
     int expectedWidth;
     int ScaleFactor;
