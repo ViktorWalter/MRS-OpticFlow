@@ -377,9 +377,15 @@ private:
         vym = vym + (tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
 
         // transform to global system
-        double vxm_n = vxm*sin(yaw)+vym*cos(yaw);
+        /*double vxm_n = vxm*sin(yaw)+vym*cos(yaw);
         vym = -vxm*cos(yaw)+vym*sin(yaw);
+        vxm = vxm_n;*/
+
+        double vxm_n = vxm*cos(-yaw)-vym*sin(-yaw);
+        double vym_n = vxm*sin(-yaw)+vym*cos(-yaw);
         vxm = vxm_n;
+        vym = vym_n;
+
 
         vam = sqrt(vxm*vxm+vym*vym);
 
