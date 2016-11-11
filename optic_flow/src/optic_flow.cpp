@@ -403,7 +403,7 @@ private:
         VelocityPublisher.publish(velocity);
 
         // Warn on wrong values
-        if(abs(vxm) > 1000 || abs(vym) > 1000)
+        if(true || abs(vxm) > 1000 || abs(vym) > 1000)
         {
             ROS_WARN("Suspiciously high velocity! vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f\ntime=%f; rawRange=%f; yaw=%f pitch=%f; roll=%f\nangvelX=%f; angVelY=%f\nxp=%f; yp=%f",vxm,vym,Zvelocity,vam,trueRange,dur.toSec(),currentRange,yaw,pitch,roll,angVel.x,angVel.y,out.x,out.y );
         }
