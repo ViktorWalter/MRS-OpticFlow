@@ -94,6 +94,7 @@ public:
         std::string ImgPath, RangerPath;
         bool ImgCompressed;
         private_node_handle.param("CameraImagePath", ImgPath, std::string("/uav/mv_25001879/image_raw"));
+				ROS_INFO("CamImPath:='%s'",ImgPath.c_str());
         private_node_handle.param("CameraImageCompressed", ImgCompressed, bool(false));
 
         private_node_handle.param("RangerDataPath", RangerPath, std::string("/uav/terarangerone"));
