@@ -141,7 +141,7 @@ cv::Point2f FftMethod::ransacMean(std::vector<cv::Point2f> pts, int numOfChosen,
 
     cv::Point2f bestIter; // save the best mean here
     uint bestIter_num = 0; // save number of points in best mean
-    std::vector<Point2f> currIter; // here goes current iteration
+    std::vector<cv::Point2f> currIter; // here goes current iteration
     cv::Point2f currMean;
 
     for(uint i=0;i < numOfIterations;i++){ // ITERATE!!!
@@ -177,8 +177,8 @@ cv::Point2f FftMethod::pointMean(std::vector<cv::Point2f> pts){
     int numPts = 0;
     for(uint i = 0;i < pts.size();i++){
         if(!isnan(pts[i].x) && !isnan(pts[i].y)){
-            mx += p.x;
-            my += p.y;
+            mx += pts[i].x;
+            my += pts[i].y;
             numPts++;
         }
     }
@@ -192,7 +192,7 @@ cv::Point2f FftMethod::pointMean(std::vector<cv::Point2f> pts){
     return cv::Point2f(nanf(""),nanf(""));
 }
 
-float getDistSq(cv::Point2f p1,cv::Point2f p2){
+float FftMethod::getDistSq(cv::Point2f p1,cv::Point2f p2){
     return pow(p1.x - p2.x,2) + pow(p1.y - p2.y,2);
 }
 

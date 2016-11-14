@@ -10,9 +10,7 @@ class OpticFlowCalc
            virtual cv::Point2f processImage(cv::Mat imCurr,
                                          bool gui,
                                          bool debug,
-                                         cv::Point midPoint_t,
-                                         double max_px_speed_t
-                                            )
+                                         cv::Point midPoint_t)
     {}
 
             void setImPrev(cv::Mat imPrev_t)

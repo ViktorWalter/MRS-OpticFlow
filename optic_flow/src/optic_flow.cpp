@@ -12,7 +12,7 @@
 #include <sensor_msgs/Range.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
-#include <include/optic_flow/utilityFunctions.h>
+#include "optic_flow/utilityFunctions.h"
 using namespace std;
 
 
@@ -395,7 +395,7 @@ private:
         vym = -vxm*cos(yaw)+vym*sin(yaw);
         vxm = vxm_n;*/
 
-        double phi = -(-yaw);
+        phi = -(-yaw);
 
         rotate2d(vxm,vym,phi);
 

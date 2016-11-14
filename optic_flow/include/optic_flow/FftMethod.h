@@ -27,6 +27,7 @@ private:
     int numOfChosen,numOfIterations;
     float thresholdRadius_sq;
 
+    cv::Point2d shift;
     cv::Point2f out;
 
     double xout,yout;

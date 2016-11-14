@@ -154,6 +154,7 @@ target_link_libraries(optic_flow_node
     farn_method
     tvl1_method
     fastSpaced_method
+    util_functions
 )
 if(CUDA_FOUND)
   target_link_libraries(optic_flow_node
