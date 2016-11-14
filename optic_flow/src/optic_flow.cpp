@@ -12,6 +12,7 @@
 #include <sensor_msgs/Range.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
+#include <include/optic_flow/utilityFunctions.h>
 using namespace std;
 
 
@@ -373,7 +374,11 @@ private:
             vym = vym_n;
         }*/
 
+        double phi = -(-gamma+1.570796326794897);
         // tilt correction
+
+        rotate2d(vxm,vym,phi);
+
         vxm = vxm + (tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
         vym = vym + (tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
 
@@ -382,15 +387,9 @@ private:
         vym = -vxm*cos(yaw)+vym*sin(yaw);
         vxm = vxm_n;*/
 
-        double phi = -(-yaw-gamma+1.570796326794897);
-        double cs = cos(phi);// cos and sin of rot maxtrix
-        double sn = sin(phi);
+        double phi = -(-yaw);
 
-        double vxm_n = vxm*cs-vym*sn;
-        double vym_n = vxm*sn+vym*cs;
-        vxm = vxm_n;
-        vym = vym_n;
-
+        rotate2d(vxm,vym,phi);
 
         vam = sqrt(vxm*vxm+vym*vym);
 

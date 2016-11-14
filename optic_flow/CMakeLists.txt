@@ -117,6 +117,7 @@ if(CUDA_FOUND)
     cuda_add_library(fsbmof src/FastSpacedBMOptFlow.cu)
 endif()
 
+add_library(util_functions src/utilityFunctions.cpp)
 add_library(block_method src/BlockMethod.cpp)
 add_library(fft_method src/FftMethod.cpp)
 add_library(brox_method src/BroxMethod.cpp)
