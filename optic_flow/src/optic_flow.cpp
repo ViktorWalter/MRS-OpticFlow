@@ -102,6 +102,10 @@ public:
 
         private_node_handle.param("ScaleFactor", ScaleFactor, int(1));
 
+        private_node_handle.param("RansacNumOfChosen", RansacNumOfChosen, int(2));
+        private_node_handle.param("RansacNumOfChosen", RansacNumOfIter, int(5));
+        private_node_handle.param("RansacThresholdRad", RansacThresholdRad, float(4));
+
         std::vector<double> camMat;
         private_node_handle.getParam("camera_matrix/data", camMat);
         fx = camMat[0];
@@ -130,6 +134,10 @@ public:
         private_node_handle.param("cameraRotated", cameraRotated, bool(true));
         //private_node_handle.getParam("camera_rotation_matrix/data", camRot);
         private_node_handle.getParam("alpha", gamma);
+
+        private_node_handle.getParam("max_px_speed", max_px_speed_t);
+
+
 
         if (useCuda)
         {
@@ -178,7 +186,7 @@ public:
             }
             case 4:
             {
-                processClass = new  FftMethod(frameSize,samplePointSize,numberOfBins);
+                processClass = new FftMethod(frameSize,samplePointSize,max_px_speed_t,RansacNumOfChosen,RansacNumOfIter,RansacThresholdRad);
                 break;
             }
 
@@ -471,12 +479,19 @@ private:
 
     bool cameraRotated;
 
+    int RansacNumOfChosen;
+    int RansacNumOfIter;
+    float RansacThresholdRad;
+
     // Ranger & odom vars
     double currentRange;
     double trueRange;
     double prevRange;
     double Zvelocity;
     double roll, pitch, yaw;
+
+
+    double max_px_speed_t;
 
     cv::Point2d angVel;
 
