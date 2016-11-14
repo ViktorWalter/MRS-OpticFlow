@@ -9,6 +9,7 @@
 #include <image_transport/image_transport.h>
 #include "optic_flow/OpticFlowCalc.h"
 
+
 class FftMethod: public OpticFlowCalc
 {
 private:
@@ -19,13 +20,14 @@ private:
     int imCenterX, imCenterY;    //center of original image
     int xi, yi; //frame corner coordinates
 
-    int bins;
-    std::vector<int> bin_arr;
-    std::vector<double> xShifts;
-    std::vector<double> yShifts;
-    cv::Point2d shift;
+    std::vector<cv::Point2f> speeds;
 
     int sqNum;
+
+    int numOfChosen,numOfIterations;
+    float thresholdRadius_sq;
+
+    cv::Point2f out;
 
     double xout,yout;
 
@@ -33,14 +35,21 @@ private:
 
 public:
     FftMethod(int i_frameSize,
-                int i_samplePointSize,
-                int i_numberOfBins);
+              int i_samplePointSize,
+              double max_px_speed_t,
+              int RansacNumOfChosen,
+              int RansacNumOfIter,
+              float RansacThresholdRad
+              );
 
     virtual cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug,cv::Point midPoint);
 
 private:
     double weightedMean(std::vector<double>* ar,double min, double max);
-
+    cv::Point2f ransacMean(std::vector<cv::Point2f> pts, int numOfChosen, float thresholdRadius_sq, int numOfIterations);
+    cv::Point2f pointMean(std::vector<cv::Point2f> pts);
+    float getDistSq(cv::Point2f p1,cv::Point2f p2);
 };
+
 
 #endif // FFTMETHOD_H

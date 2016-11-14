@@ -1,27 +1,38 @@
 #include "../include/optic_flow/FftMethod.h"
 
+
 FftMethod::FftMethod(int i_frameSize,
                      int i_samplePointSize,
-                     int i_numberOfBins)
+                     double max_px_speed_t,
+                     int RansacNumOfChosen,
+                     int RansacNumOfIter,
+                     float RansacThresholdRad)
     {
     frameSize = i_frameSize;
     samplePointSize = i_samplePointSize;
-    bins = i_numberOfBins;
+    max_px_speed_sq = pow(max_px_speed_t,2);
+
+    numOfChosen = RansacNumOfChosen;
+    numOfIterations = RansacNumOfIter;
+    thresholdRadius_sq = pow(RansacThresholdRad,2);
 
     if ((frameSize % 2) == 1){
         frameSize--;
     }
     if((frameSize % samplePointSize) != 0){
         samplePointSize = frameSize;
+        ROS_WARN("Oh, what kind of setting for OpticFlow is this? Frame size must be a multiple of SamplePointSize! Forcing FrameSize = SamplePointSize (i.e. one window)..");
     }
-
-    xShifts.resize((frameSize/samplePointSize)*(frameSize/samplePointSize));
-    yShifts.resize((frameSize/samplePointSize)*(frameSize/samplePointSize));
-    bin_arr.resize(bins);
 
     sqNum = frameSize/samplePointSize;
 
     first = true;
+
+    if(RAND_MAX < 100){
+        ROS_WARN("Why is RAND_MAX set to only %d? Ransac in OpticFlow won't work properly!",RAND_MAX);
+    }
+
+
 
 }
 
@@ -30,10 +41,11 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
                                               bool debug,
                                     cv::Point midPoint){
 
+    // save image for GUI
     if(gui)
         imView = imCurr.clone();
 
-
+    // copy first to second
     if(first){
         imCurr.copyTo(imPrev);
         first = false;
@@ -42,10 +54,15 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
     if(debug)
        ROS_INFO("Curr type: %d prev type: %d",imCurr.type(),imPrev.type());
 
+    // convert images to float images
     cv::Mat imCurrF, imPrevF;
     imCurr.convertTo(imCurrF, CV_32FC1);
     imPrev.convertTo(imPrevF, CV_32FC1);
 
+    // clear the vector with speeds
+    speeds.clear();
+
+    // calculate correlation for each window and store it if it doesn't exceed the limit
     for(int i = 0;i< sqNum;i++){
         for(int j = 0;j<sqNum;j++){
             xi = i*samplePointSize;
@@ -53,20 +70,14 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
             shift = cv::phaseCorrelate(imCurrF(cv::Rect(xi,yi,samplePointSize,samplePointSize)),
                                        imPrevF(cv::Rect(xi,yi,samplePointSize,samplePointSize))
                                        );
-            if(abs(shift.x) > samplePointSize/2){
-                xShifts.at(i*sqNum + j) = nan("");
-                ROS_WARN("FFT - invalid correlation X in rect %d %d",i,j);
+
+            if(pow(shift.x,2)+pow(shift.y,2) > max_px_speed_sq){
+                ROS_WARN("FFT - invalid correlation in window x %d y %d",i,j);
             }else{
-                xShifts.at(i*sqNum + j) = shift.x;
+                speeds.push_back(cv::Point2f(shift.x,shift.y));
             }
 
-            if(abs(shift.y) > samplePointSize/2){
-                yShifts.at(i*sqNum + j) = nan("");
-                ROS_WARN("FFT - invalid correlation Y in rect %d %d",i,j);
-            }else{
-                yShifts.at(i*sqNum + j) = shift.y;
-            }
-
+            // draw nice lines if gui is enabled
             if(gui){
                 cv::line(imView,
                      cv::Point2i(xi+samplePointSize/2,yi+samplePointSize/2),
@@ -76,8 +87,8 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
         }
     }
 
-    xout = weightedMean(&xShifts,-samplePointSize,samplePointSize);
-    yout = weightedMean(&yShifts,-samplePointSize,samplePointSize);
+    // ransac...?
+    out = ransacMean(speeds,numOfChosen,thresholdRadius_sq,numOfIterations);
 
     if(debug)
         ROS_INFO("x = %f; y = %f\n",xout,yout);
@@ -85,6 +96,7 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
 
     imPrev = imCurr.clone();
 
+    // draw nice center line
     if (gui)
     {
         cv::Point2i midPoint = cv::Point2i((imView.size().width/2),(imView.size().height/2));
@@ -100,8 +112,6 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
 
 
     }
-
-
 
     return cv::Point2f(xout,yout);
 }
@@ -122,58 +132,68 @@ double FftMethod::weightedMean(std::vector<double> *ar, double min, double max){
         return nan("");
     else
         return sum/((double)size);
-    /*
-    double step = (max-min)/((double)bins);
+}
 
-    std::fill(bin_arr.begin(),bin_arr.end(),0);
-    std:sort(ar->begin(),ar->end());
+cv::Point2f FftMethod::ransacMean(std::vector<cv::Point2f> pts, int numOfChosen, float thresholdRadius_sq, int numOfIterations){
+    if(pts.size() <= numOfChosen){   // weve got less or same number (or zero?) of points as number to choose
+        return pointMean(pts);
+    }
 
-    // count how many numbers fall into each bin
-    double curr_bound = min+step;
-    int j = 0;
-    for(int i = 0;i<bins;i++){
+    cv::Point2f bestIter; // save the best mean here
+    uint bestIter_num = 0; // save number of points in best mean
+    std::vector<Point2f> currIter; // here goes current iteration
+    cv::Point2f currMean;
 
-        if(j >= ar->size()){
-            break;
+    for(uint i=0;i < numOfIterations;i++){ // ITERATE!!!
+        currIter.clear();
+
+        for(uint j=0;j<numOfChosen;j++){ // choose some points (one point can be chosen more times...)
+            currIter.push_back(pts[rand()%pts.size()]);
         }
 
-        while(ar->at(j) < curr_bound){
+        currMean = pointMean(currIter); // get the mean
 
-            bin_arr[i]++;
-            j++;
+        currIter.clear(); // clear this array
 
-            if(j >= ar->size()){
-                break;
+        for(uint j=0;j<pts.size();j++){ // choose those in threshold
+            if(getDistSq(currMean,pts[j]) < thresholdRadius_sq){
+                currIter.push_back(pts[j]);
             }
         }
-        curr_bound += step;
-    }
 
-
-    // print output
-    /*curr_bound = min+step;
-    for(int i = 0;i<bins;i++){
-        ROS_INFO("Bin from %f to %f : %d nums",curr_bound-step,curr_bound,bin_arr[i]);
-        curr_bound += step;
-
-    }*/
-/*
-    j = 0;
-    int cbi = 0; // current bin starting index
-    double loc_sum = 0;
-    double sum = 0;
-
-    for(int i = 0;i<bins;i++){
-        loc_sum = 0;
-        for(j = cbi;j<cbi+bin_arr.at(i);j++){
-            loc_sum += ar->at(j);
+        if(currIter.size() > bestIter_num){
+            bestIter_num = currIter.size();
+            bestIter = pointMean(currIter);
         }
-        sum += loc_sum * ((double) bin_arr.at(i));
-
-        cbi += bin_arr.at(i);
-
     }
 
-    return sum/((double)ar->size());
-  */
+    return bestIter;
 }
+
+
+cv::Point2f FftMethod::pointMean(std::vector<cv::Point2f> pts){
+    float mx = 0;
+    float my = 0;
+    int numPts = 0;
+    for(uint i = 0;i < pts.size();i++){
+        if(!isnan(pts[i].x) && !isnan(pts[i].y)){
+            mx += p.x;
+            my += p.y;
+            numPts++;
+        }
+    }
+
+    if(numPts > 0){
+        // now we're talking..
+        return cv::Point2f(mx/(float)numPts,my/(float)numPts);
+    }
+
+    // what do you want me to do with this?
+    return cv::Point2f(nanf(""),nanf(""));
+}
+
+float getDistSq(cv::Point2f p1,cv::Point2f p2){
+    return pow(p1.x - p2.x,2) + pow(p1.y - p2.y,2);
+}
+
+
