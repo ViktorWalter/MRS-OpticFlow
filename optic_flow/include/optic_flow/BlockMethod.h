@@ -48,7 +48,7 @@ class BlockMethod: public OpticFlowCalc
                 int stepSize
             );
 
-    cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug,cv::Point midPoint);
+    std::vector<cv::Point2f> processImage(cv::Mat imCurr,bool gui,bool debug,cv::Point midPoint);
 
 
 

@@ -1,6 +1,5 @@
 #include "../include/optic_flow/BlockMethod.h"
 
-
 BlockMethod::BlockMethod(int i_frameSize,
                       int i_samplePointSize,
                       int i_scanRadius,
@@ -25,14 +24,16 @@ BlockMethod::BlockMethod(int i_frameSize,
     imPrev = cv::Mat(frameSize,frameSize,CV_8UC1);
     imPrev = cv::Scalar(0);
 
-
+    //ROS_WARN("Block Matching wasn't rewritten for Allsac yet!!! Please don't use it...");
 }
 
 
-cv::Point2f BlockMethod::processImage(cv::Mat imCurr,
+std::vector<cv::Point2f> BlockMethod::processImage(cv::Mat imCurr,
                                               bool gui,
                                               bool debug,
                                       cv::Point midPoint){
+
+    //ROS_WARN("Really, you are using BM while it's not rewritten yet? C'mon...rewrite it for ALLsac");
 
     // save image for gui
     if(gui)
@@ -112,7 +113,10 @@ cv::Point2f BlockMethod::processImage(cv::Mat imCurr,
 
 
     imPrev = imCurr.clone();
-    return refined;
+    std::vector<cv::Point2f> ret;
+    ret.push_back(refined);
+    return ret;
+    //return refined;
 }
 
 cv::Point2f BlockMethod::Refine(cv::Mat imCurr, cv::Mat imPrev, cv::Point2i fullpixFlow, int passes){

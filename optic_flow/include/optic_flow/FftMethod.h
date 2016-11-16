@@ -24,27 +24,17 @@ private:
 
     int sqNum;
 
-    int numOfChosen,numOfIterations;
-    float thresholdRadius_sq;
-
     cv::Point2d shift;
-    cv::Point2f out;
-
-    double xout,yout;
 
     bool first;
-    bool allsac_on;
+
 
 public:
     FftMethod(int i_frameSize,
               int i_samplePointSize,
-              double max_px_speed_t,
-              int RansacNumOfChosen,
-              int RansacNumOfIter,
-              float RansacThresholdRad
-              , bool allSac);
+              double max_px_speed_t);
 
-    virtual cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug,cv::Point midPoint);
+    std::vector<cv::Point2f> processImage(cv::Mat imCurr,bool gui,bool debug,cv::Point midPoint);
 
 private:
     double weightedMean(std::vector<double>* ar,double min, double max);

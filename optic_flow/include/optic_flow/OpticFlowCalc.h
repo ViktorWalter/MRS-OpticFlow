@@ -7,7 +7,7 @@ class OpticFlowCalc
 {
 
     public:
-           virtual cv::Point2f processImage(cv::Mat imCurr,
+           virtual std::vector<cv::Point2f> processImage(cv::Mat imCurr,
                                          bool gui,
                                          bool debug,
                                          cv::Point midPoint_t)

@@ -55,6 +55,7 @@ public:
     {
         coordsAcquired = false;
         first = true;
+        checkAccel = false;
 
         ros::NodeHandle private_node_handle("~");
         private_node_handle.param("DEBUG", DEBUG, bool(false));
@@ -104,9 +105,21 @@ public:
 
         private_node_handle.param("RansacNumOfChosen", RansacNumOfChosen, int(2));
         private_node_handle.param("RansacNumOfIter", RansacNumOfIter, int(5));
+        float RansacThresholdRad;
         private_node_handle.param("RansacThresholdRad", RansacThresholdRad, float(4));
+        RansacThresholdRadSq = pow(RansacThresholdRad,2);
         private_node_handle.param("Allsac", Allsac, bool(true));
 
+
+        if(Allsac && RansacNumOfChosen != 2){
+            ROS_WARN("When Allsac is enabled, the RansacNumOfChosen can be only 2.");
+        }
+
+        ROS_INFO("RANSAC settings - ALLsac: %c, Num of chosen: %d, Num of Iters: %d, threshold radius: %f",Allsac ? 'y' : 'n',RansacNumOfChosen,RansacNumOfIter,RansacThresholdRad);
+
+        if(RAND_MAX < 100 && !Allsac){
+            ROS_WARN("Why is RAND_MAX set to only %d? Ransac in OpticFlow won't work properly!",RAND_MAX);
+        }
 
         std::vector<double> camMat;
         private_node_handle.getParam("camera_matrix/data", camMat);
@@ -138,6 +151,8 @@ public:
         private_node_handle.getParam("alpha", gamma);
 
         private_node_handle.getParam("max_px_speed", max_px_speed_t);
+        private_node_handle.getParam("max_speed", maxSpeed);
+        private_node_handle.getParam("max_acceleration", maxAccel);
 
 
 
@@ -188,7 +203,7 @@ public:
             }
             case 4:
             {
-                processClass = new FftMethod(frameSize,samplePointSize,max_px_speed_t,RansacNumOfChosen,RansacNumOfIter,RansacThresholdRad,Allsac);
+                processClass = new FftMethod(frameSize,samplePointSize,max_px_speed_t);
                 break;
             }
 
@@ -285,6 +300,9 @@ private:
         Process(image);
     }
 
+
+
+
     void Process(const cv_bridge::CvImagePtr image)
     {
         // First things first
@@ -347,27 +365,38 @@ private:
         cv::cvtColor(imOrigScaled(frameRect),imCurr,CV_RGB2GRAY);
 
         // Call the method function
-        cv::Point2f out = processClass->processImage(imCurr,gui,DEBUG,midPoint);
+        std::vector<cv::Point2f> speeds = processClass->processImage(imCurr,gui,DEBUG,midPoint);
+
 
         // Check for wrong values
-        if(isnan(out.x) || isnan(out.y)){
-            ROS_WARN("Processing function returned invalid value!");
+        speeds = removeNanPoints(speeds);
+
+        if(speeds.size() <= 0){
+            ROS_WARN("Processing function returned no valid points!");
             return;
         }
 
         // Print output
         if(DEBUG){
-            ROS_INFO("vxr = %f; vyr=%f",out.x,out.y);
+            for(uint i=0;i<speeds.size();i++){
+                ROS_INFO("%d -> vxr = %f; vyr=%f",i,speeds[i].x,speeds[i].y);
+            }
         }
 
         // Calculate real velocity
-        vxm = -(out.x*(trueRange/fx))/dur.toSec();
-        vym = (out.y*(trueRange/fy))/dur.toSec();
+        multiplyAllPts(speeds,
+                       -trueRange/(fx*dur.toSec()),
+                       trueRange/(fy*dur.toSec())
+                       );
+        //vxm = -(out.x*(trueRange/fx))/dur.toSec();
+        //vym = (out.y*(trueRange/fy))/dur.toSec();
 
-        // Publish velocity without corrections
+        // Publish velocity without corrections, just an average...
+        cv::Point2f rawAvg = pointMean(speeds);
+
         geometry_msgs::Twist velocity;
-        velocity.linear.x = vxm;
-        velocity.linear.y = vym;
+        velocity.linear.x = rawAvg.x;
+        velocity.linear.y = rawAvg.y;
         velocity.linear.z = Zvelocity;
         velocity.angular.z = trueRange;
         VelocityRawPublisher.publish(velocity);
@@ -375,33 +404,46 @@ private:
         // CORRECTIONS
 
         // camera rotation (within the construction) correction
-        /*if (cameraRotated)
-        {
-            double vxm_n = camRot[0]*vxm + camRot[1]*vym;
-            double vym_n = camRot[2]*vxm + camRot[3]*vym;
-
-            vxm = vxm_n;
-            vym = vym_n;
-        }*/
-
         double phi = -(-gamma+1.570796326794897);
+
+        //rotate2d(vxm,vym,phi);
+        rotateAllPts(speeds,phi);
+
         // tilt correction
-
-        rotate2d(vxm,vym,phi);
-
-        vxm = vxm + (tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
-        vym = vym + (tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
+        //vxm = vxm + (tan(angVel.y*dur.toSec())*trueRange)/dur.toSec();
+        //vym = vym + (tan(angVel.x*dur.toSec())*trueRange)/dur.toSec();
+        addToAll(speeds, (tan(angVel.y*dur.toSec())*trueRange)/dur.toSec(),(tan(angVel.x*dur.toSec())*trueRange)/dur.toSec());
 
         // transform to global system
-        /*double vxm_n = vxm*sin(yaw)+vym*cos(yaw);
-        vym = -vxm*cos(yaw)+vym*sin(yaw);
-        vxm = vxm_n;*/
-
         phi = -(-yaw);
 
-        rotate2d(vxm,vym,phi);
+        //rotate2d(vxm,vym,phi);
+        rotateAllPts(speeds,phi);
 
-        vam = sqrt(vxm*vxm+vym*vym);
+        // Bound speeds
+        ros::Time timeNow = ros::Time::now();
+        ros::Duration timeDif = timeNow - lastPublish;
+
+        float max_sp_from_accel = lastVelocity + maxAccel*timeDif.toSec();
+
+        speeds = getOnlyInAbsBound(speeds,0,maxSpeed); // bound according to max speed
+        speeds = getOnlyInAbsBound(speeds,0,max_sp_from_accel); // bound according to max acceleration
+
+        if(speeds.size() < 1){
+            return;
+        }
+
+        // Do the Allsac/Ransac
+        cv::Point2f out;
+        if(Allsac){
+            out = allsacMean(speeds,RansacThresholdRadSq);
+        }else{
+            out = ransacMean(speeds,RansacNumOfChosen,RansacThresholdRadSq,RansacNumOfIter);
+        }
+
+        vam = sqrt(getNormSq(out));
+        vxm = out.x;
+        vym = out.y;
 
         // Print out info
         if(DEBUG){
@@ -415,10 +457,13 @@ private:
         velocity.angular.z = trueRange;
         VelocityPublisher.publish(velocity);
 
+        lastPublish = timeNow; // remember time from the point on some line higher because RANSAC and even ALLSAC can have very different processing time
+        lastVelocity = vam;
+
         // Warn on wrong values
         if(abs(vxm) > 1000 || abs(vym) > 1000)
         {
-            ROS_WARN("Suspiciously high velocity! vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f\ntime=%f; rawRange=%f; yaw=%f pitch=%f; roll=%f\nangvelX=%f; angVelY=%f\nxp=%f; yp=%f",vxm,vym,Zvelocity,vam,trueRange,dur.toSec(),currentRange,yaw,pitch,roll,angVel.x,angVel.y,out.x,out.y );
+            ROS_WARN("Suspiciously high velocity! vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f\ntime=%f; rawRange=%f; yaw=%f pitch=%f; roll=%f\nangvelX=%f; angVelY=%f\nxp=%f; yp=%f",vxm,vym,Zvelocity,vam,trueRange,dur.toSec(),currentRange,yaw,pitch,roll,angVel.x,angVel.y,vxm,vym );
         }
 
     }
@@ -483,7 +528,7 @@ private:
 
     int RansacNumOfChosen;
     int RansacNumOfIter;
-    float RansacThresholdRad;
+    float RansacThresholdRadSq;
     bool Allsac;
 
     // Ranger & odom vars
@@ -495,8 +540,14 @@ private:
 
 
     double max_px_speed_t;
+    float maxSpeed;
+    float maxAccel;
+    bool checkAccel;
+    ros::Time lastPublish;
+    float lastVelocity;
 
     cv::Point2d angVel;
+
 
 
 };

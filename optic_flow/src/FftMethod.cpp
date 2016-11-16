@@ -3,26 +3,11 @@
 
 FftMethod::FftMethod(int i_frameSize,
                      int i_samplePointSize,
-                     double max_px_speed_t,
-                     int RansacNumOfChosen,
-                     int RansacNumOfIter,
-                     float RansacThresholdRad,
-                     bool allSac)
+                     double max_px_speed_t)
     {
     frameSize = i_frameSize;
     samplePointSize = i_samplePointSize;
     max_px_speed_sq = pow(max_px_speed_t,2);
-
-    numOfChosen = RansacNumOfChosen;
-    numOfIterations = RansacNumOfIter;
-    thresholdRadius_sq = pow(RansacThresholdRad,2);
-    allsac_on = allSac;
-
-    if(allsac_on && RansacNumOfChosen != 2){
-        ROS_WARN("When Allsac is enabled, the RansacNumOfChosen can be only 2.");
-    }
-
-
 
     if ((frameSize % 2) == 1){
         frameSize--;
@@ -37,15 +22,13 @@ FftMethod::FftMethod(int i_frameSize,
 
     first = true;
 
-    if(RAND_MAX < 100){
-        ROS_WARN("Why is RAND_MAX set to only %d? Ransac in OpticFlow won't work properly!",RAND_MAX);
-    }
+
 
 
 
 }
 
-cv::Point2f FftMethod::processImage(cv::Mat imCurr,
+std::vector<cv::Point2f> FftMethod::processImage(cv::Mat imCurr,
                                               bool gui,
                                               bool debug,
                                     cv::Point midPoint){
@@ -98,24 +81,17 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
 
     // ransac...?
 
-    if(allsac_on){
+    /*if(allsac_on){
         out = allsacMean(speeds,thresholdRadius_sq);
     }else{
         out = ransacMean(speeds,numOfChosen,thresholdRadius_sq,numOfIterations);
-    }
+    }*/
 
     imPrev = imCurr.clone();
 
     // draw nice center line
     if (gui)
     {
-        cv::Point2i midPoint = cv::Point2i((imView.size().width/2),(imView.size().height/2));
-
-        cv::line(imView,
-                 midPoint,
-                 midPoint+cv::Point2i(out.x,out.y)*6,
-                 cv::Scalar(255),2);
-
         cv::imshow("main",imView);
 
         cv::waitKey(10);
@@ -123,7 +99,7 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
 
     }
 
-    return out;
+    return speeds;
 }
 
 
