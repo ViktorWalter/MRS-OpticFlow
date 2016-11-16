@@ -33,6 +33,7 @@ private:
     double xout,yout;
 
     bool first;
+    bool allsac_on;
 
 public:
     FftMethod(int i_frameSize,
@@ -41,7 +42,7 @@ public:
               int RansacNumOfChosen,
               int RansacNumOfIter,
               float RansacThresholdRad
-              );
+              , bool allSac);
 
     virtual cv::Point2f processImage(cv::Mat imCurr,bool gui,bool debug,cv::Point midPoint);
 
@@ -50,6 +51,10 @@ private:
     cv::Point2f ransacMean(std::vector<cv::Point2f> pts, int numOfChosen, float thresholdRadius_sq, int numOfIterations);
     cv::Point2f pointMean(std::vector<cv::Point2f> pts);
     float getDistSq(cv::Point2f p1,cv::Point2f p2);
+
+    cv::Point2f twoPointMean(cv::Point2f p1, cv::Point2f p2);
+
+    cv::Point2f allsacMean(std::vector<cv::Point2f> pts, float thresholdRadius_sq);
 };
 
 

@@ -6,7 +6,8 @@ FftMethod::FftMethod(int i_frameSize,
                      double max_px_speed_t,
                      int RansacNumOfChosen,
                      int RansacNumOfIter,
-                     float RansacThresholdRad)
+                     float RansacThresholdRad,
+                     bool allSac)
     {
     frameSize = i_frameSize;
     samplePointSize = i_samplePointSize;
@@ -15,6 +16,13 @@ FftMethod::FftMethod(int i_frameSize,
     numOfChosen = RansacNumOfChosen;
     numOfIterations = RansacNumOfIter;
     thresholdRadius_sq = pow(RansacThresholdRad,2);
+    allsac_on = allSac;
+
+    if(allsac_on && RansacNumOfChosen != 2){
+        ROS_WARN("When Allsac is enabled, the RansacNumOfChosen can be only 2.");
+    }
+
+
 
     if ((frameSize % 2) == 1){
         frameSize--;
@@ -23,6 +31,7 @@ FftMethod::FftMethod(int i_frameSize,
         samplePointSize = frameSize;
         ROS_WARN("Oh, what kind of setting for OpticFlow is this? Frame size must be a multiple of SamplePointSize! Forcing FrameSize = SamplePointSize (i.e. one window)..");
     }
+
 
     sqNum = frameSize/samplePointSize;
 
@@ -88,11 +97,12 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
     }
 
     // ransac...?
-    out = ransacMean(speeds,numOfChosen,thresholdRadius_sq,numOfIterations);
 
-    if(debug)
-        ROS_INFO("x = %f; y = %f\n",xout,yout);
-
+    if(allsac_on){
+        out = allsacMean(speeds,thresholdRadius_sq);
+    }else{
+        out = ransacMean(speeds,numOfChosen,thresholdRadius_sq,numOfIterations);
+    }
 
     imPrev = imCurr.clone();
 
@@ -103,7 +113,7 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
 
         cv::line(imView,
                  midPoint,
-                 midPoint+cv::Point2i(xout,yout)*6,
+                 midPoint+cv::Point2i(out.x,out.y)*6,
                  cv::Scalar(255),2);
 
         cv::imshow("main",imView);
@@ -113,7 +123,7 @@ cv::Point2f FftMethod::processImage(cv::Mat imCurr,
 
     }
 
-    return cv::Point2f(xout,yout);
+    return out;
 }
 
 
@@ -155,9 +165,9 @@ cv::Point2f FftMethod::ransacMean(std::vector<cv::Point2f> pts, int numOfChosen,
 
         currIter.clear(); // clear this array
 
-        for(uint j=0;j<pts.size();j++){ // choose those in threshold
-            if(getDistSq(currMean,pts[j]) < thresholdRadius_sq){
-                currIter.push_back(pts[j]);
+        for(uint k=0;k<pts.size();k++){ // choose those in threshold
+            if(getDistSq(currMean,pts[k]) < thresholdRadius_sq){
+                currIter.push_back(pts[k]);
             }
         }
 
@@ -196,4 +206,44 @@ float FftMethod::getDistSq(cv::Point2f p1,cv::Point2f p2){
     return pow(p1.x - p2.x,2) + pow(p1.y - p2.y,2);
 }
 
+cv::Point2f FftMethod::twoPointMean(cv::Point2f p1, cv::Point2f p2){
+    return cv::Point2f((p1.x+p2.x)/2, (p1.y+p2.y)/2);
+}
 
+cv::Point2f FftMethod::allsacMean(std::vector<cv::Point2f> pts, float thresholdRadius_sq){
+    // For every two points get their mean and do the typical RANSAC things...
+    if(pts.size() <= 2){   // weve got less or same number (or zero?) of points as number to choose
+        return pointMean(pts);
+    }
+
+    cv::Point2f currMean;
+    std::vector<cv::Point2f> currIter;
+
+    int bestIter_num = 0;
+    cv::Point2f bestIter;
+
+    for(uint i = 0;i < pts.size();i++){
+        for(uint j=i;j<pts.size();j++){ // iterate over all pairs
+
+            currIter.clear();
+
+            currMean = twoPointMean(pts[i],pts[j]); // calc mean
+
+            for(uint k=0;k<pts.size();k++){ // choose those in threshold
+                if(getDistSq(currMean,pts[k]) < thresholdRadius_sq){
+                    currIter.push_back(pts[k]);
+                }
+            }
+
+            if(currIter.size() > bestIter_num){
+                bestIter_num = currIter.size();
+                bestIter = pointMean(currIter);
+                if(bestIter_num >= pts.size()){
+                    return bestIter;
+                }
+            }
+        }
+    }
+
+    return bestIter;
+}

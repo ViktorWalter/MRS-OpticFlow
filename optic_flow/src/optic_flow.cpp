@@ -103,8 +103,10 @@ public:
         private_node_handle.param("ScaleFactor", ScaleFactor, int(1));
 
         private_node_handle.param("RansacNumOfChosen", RansacNumOfChosen, int(2));
-        private_node_handle.param("RansacNumOfChosen", RansacNumOfIter, int(5));
+        private_node_handle.param("RansacNumOfIter", RansacNumOfIter, int(5));
         private_node_handle.param("RansacThresholdRad", RansacThresholdRad, float(4));
+        private_node_handle.param("Allsac", Allsac, bool(true));
+
 
         std::vector<double> camMat;
         private_node_handle.getParam("camera_matrix/data", camMat);
@@ -186,7 +188,7 @@ public:
             }
             case 4:
             {
-                processClass = new FftMethod(frameSize,samplePointSize,max_px_speed_t,RansacNumOfChosen,RansacNumOfIter,RansacThresholdRad);
+                processClass = new FftMethod(frameSize,samplePointSize,max_px_speed_t,RansacNumOfChosen,RansacNumOfIter,RansacThresholdRad,Allsac);
                 break;
             }
 
@@ -482,6 +484,7 @@ private:
     int RansacNumOfChosen;
     int RansacNumOfIter;
     float RansacThresholdRad;
+    bool Allsac;
 
     // Ranger & odom vars
     double currentRange;
