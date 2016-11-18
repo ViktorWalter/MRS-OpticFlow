@@ -1,4 +1,55 @@
 #ifndef FASTSPACEDBMMETHOD_OCL_H
 #define FASTSPACEDBMMETHOD_OCL_H
 
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <image_transport/image_transport.h>
+#include "optic_flow/OpticFlowCalc.h"
+#include <opencv2/core/core.hpp>
+#include <CL/cl.h>
+#include <opencv2/ocl/ocl.hpp>
+
+
+class FastSpacedBMMethod: public OpticFlowCalc
+{
+private:
+    bool initialized;
+    char* kernelSource;
+    cv::ocl::ProgramSource* program;
+
+    cv::ocl::oclMat imCurr_g;
+    cv::ocl::oclMat imPrev_g;
+
+    cv::ocl::oclMat imflowX_g;
+    cv::ocl::oclMat imflowY_g;
+
+
+    int samplePointSize;
+    int scanRadius;
+    int stepSize;
+
+    double cx,cy,fx,fy;
+    double k1,k2,k3,p1,p2;
+
+public:
+    FastSpacedBMMethod(int i_samplePointSize,
+                                         int i_scanRadius,
+                                         int i_stepSize,
+                                         int i_cx,int i_cy,int i_fx,int i_fy,
+                                         int i_k1,int i_k2,int i_k3,int i_p1,int i_p2
+                           );
+
+    std::vector<cv::Point2f> processImage(cv::Mat imCurr_t,bool gui,bool debug,
+                                     cv::Point midPoint_t);
+
+private:
+    void showFlow(const cv::ocl::oclMat flowx_g, const cv::ocl::oclMat flowy_g, signed char vXin, signed char vYin);
+    void drawOpticalFlow(const cv::Mat_<signed char>& flowx, const cv::Mat_<signed char>& flowy, cv::Mat& dst, float maxmotion,
+                         int step);
+
+
+
+};
+
+
 #endif // FASTSPACEDBMMETHOD_OCL_H

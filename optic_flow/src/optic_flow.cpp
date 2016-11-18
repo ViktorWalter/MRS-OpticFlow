@@ -26,6 +26,7 @@ using namespace std;
 #include "optic_flow/OpticFlowCalc.h"
 #include "optic_flow/BlockMethod.h"
 #include "optic_flow/FftMethod.h"
+#include "optic_flow/FastSpacedBMMethod_OCL.h"
 
 #ifdef CUDA_SUPPORTED
 #include "optic_flow/BroxMethod.h"
@@ -206,6 +207,11 @@ public:
                 processClass = new FftMethod(frameSize,samplePointSize,max_px_speed_t);
                 break;
             }
+        case 5:
+        {
+            processClass = new FastSpacedBMMethod(samplePointSize,scanRadius,stepSize,cx,cy,fx,fy,k1,k2,k3,p1,p2);
+            break;
+        }
 
         }
 

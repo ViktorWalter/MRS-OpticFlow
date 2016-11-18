@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(optic_flow)
 
 FILE(GLOB_RECURSE HEADER_FILES include *.h)
+FILE(GLOB_RECURSE OPENCL_FILES include *.cl)
 FILE(GLOB_RECURSE LAUNCHER_FILES include *.launch)
 FILE(GLOB_RECURSE YAML_FILES include *.yaml)
 
@@ -124,9 +125,10 @@ add_library(brox_method src/BroxMethod.cpp)
 add_library(farn_method src/FarnMethod.cpp)
 add_library(tvl1_method src/Tvl1Method.cpp)
 add_library(fastSpaced_method src/FastSpacedBMethod.cpp)
-
+add_library(fastSpacedOCL_method src/FastSpacedBMMethod_OCL.cpp)
 target_link_libraries(fft_method ${OpenCV_LIBRARIES})
 target_link_libraries(block_method ${OpenCV_LIBRARIES})
+target_link_libraries(fastSpacedOCL_method ${OpenCV_LIBRARIES})
 
 ## Declare a C++ executable
 add_executable(optic_flow_node src/optic_flow.cpp)
@@ -136,8 +138,8 @@ add_executable(optic_flow_node src/optic_flow.cpp)
 ## same as for the library above
 add_dependencies(optic_flow_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_custom_target(headers SOURCES ${HEADER_FILES} ${LAUNCHER_FILES} ${YAML_FILES})
-
+add_custom_target(headers SOURCES ${HEADER_FILES} ${OPENCL_FILES} ${LAUNCHER_FILES} ${YAML_FILES})
+configure_file(src/FastSpacedBMMethod.cl ${CATKIN_DEVEL_PREFIX}/${CATKIN_PACKAGE_BIN_DESTINATION}/FastSpacedBMMethod.cl COPYONLY)
 #target_link_libraries(fastSpaced_method fsbmof)
 #target_link_libraries(farn_method  ${OpenCV_LIBRARIES})
 target_link_libraries(brox_method  ${OpenCV_LIBRARIES})
@@ -154,6 +156,7 @@ target_link_libraries(optic_flow_node
     farn_method
     tvl1_method
     fastSpaced_method
+    fastSpacedOCL_method
     util_functions
 )
 if(CUDA_FOUND)
