@@ -130,6 +130,8 @@ target_link_libraries(fft_method ${OpenCV_LIBRARIES})
 target_link_libraries(block_method ${OpenCV_LIBRARIES})
 target_link_libraries(fastSpacedOCL_method ${OpenCV_LIBRARIES})
 
+target_link_libraries(fastSpacedOCL_method ${catkin_LIBRARIES})
+
 ## Declare a C++ executable
 add_executable(optic_flow_node src/optic_flow.cpp)
 

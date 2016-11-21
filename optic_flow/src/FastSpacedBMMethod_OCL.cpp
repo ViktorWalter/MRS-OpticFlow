@@ -1,6 +1,7 @@
 #include "../include/optic_flow/FastSpacedBMMethod_OCL.h"
 #include <ostream>
 #include <dirent.h>
+#include "ros/package.h"
 
 FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
                                      int i_scanRadius,
@@ -37,30 +38,10 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
         return;
     }
 
-    cv::ocl::setDevice(devsInfo[0]);
-
-    std::string dir= std::string(".");
-    std::vector<std::string> files = std::vector<std::string>();
-    DIR *dp;
-    struct dirent *dirp;
-    if((dp  = opendir(dir.c_str())) == NULL) {
-        std::cout << "Error(" << errno << ") opening " << dir << std::endl;
-        return ;
-    }
-
-    while ((dirp = readdir(dp)) != NULL) {
-        files.push_back(std::string(dirp->d_name));
-    }
-    closedir(dp);
-
-
-    for (unsigned int i = 0;i < files.size();i++) {
-        std::cout << files[i] << std::endl;
-    }
-
     FILE *program_handle;
     size_t program_size;
-    program_handle = fopen("find a way to search for the file in original dir. FastSpacedBMMethod.cl", "r");
+    //ROS_INFO((ros::package::getPath("optic_flow")+"/src/FastSpacedBMMethod.cl").c_str());
+    program_handle = fopen((ros::package::getPath("optic_flow")+"/src/FastSpacedBMMethod.cl").c_str(),"r");
     if(program_handle == NULL)
     {
         std::cout << "Couldn't find the program file" << std::endl;
@@ -74,9 +55,7 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
     fread(kernelSource, sizeof(char), program_size, program_handle);
     fclose(program_handle);
 
-    program->name = "OptFlow";
-    program->programStr = kernelSource;
-
+    program = new cv::ocl::ProgramSource("OptFlow",kernelSource);
     initialized = true;
     return ;
 
@@ -100,56 +79,96 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     int blockszX = samplePointSize+stepSize;
     int blockszY = samplePointSize+stepSize;
 
-    signed char outputX;
-    signed char outputY;
-
     imCurr = imCurr_t;
 
+    ROS_INFO("here x");
     imPrev_g.upload(imPrev);
     imCurr_g.upload(imCurr);
-    imflowX_g = cv::ocl::oclMat(imCurr.size(),imCurr.type());
-    imflowY_g = cv::ocl::oclMat(imCurr.size(),imCurr.type());
+    ROS_INFO("here x");
 
+    ROS_INFO("here x");
     std::size_t grid[3] = {(imPrev.cols-scanRadius*2)/blockszX,
                            (imPrev.rows-scanRadius*2)/blockszY,
                            1};
     std::size_t block[3] = {scanDiameter,scanDiameter,1};
+    std::size_t global[3] = {grid[0]*block[0],grid[1]*block[1],1};
+    std::size_t one[3] = {1,1,1};
+
+    imflowX_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8SC1);
+    imflowY_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8SC1);
+    cl_int imSrcWidth_g = (cl_int)(imCurr.size().width);
+    cl_int imDstWidth_g = (cl_int)(grid[0]);
+    cl_int samplePointSize_g = (cl_int)samplePointSize;
+    cl_int stepSize_g = (cl_int)stepSize;
+    cl_int scanRadius_g = (cl_int)scanRadius;
+    cl_int scanDiameter_g = (cl_int)scanDiameter;
 
     std::vector<std::pair<size_t , const void *> > args;
+    args.clear();
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imPrev_g.data ));
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imCurr_g.data ));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &imSrcWidth_g));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstWidth_g));
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowX_g.data ));
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowY_g.data ));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &samplePointSize_g));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &stepSize_g));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanRadius_g));
 
     cv::ocl::openCLExecuteKernelInterop(cv::ocl::Context::getContext(),
                                         *program,
                                         "OptFlow",
-                                        grid,
+                                        global,
                                         block,
                                         args,
                                         1,
                                         0,
                                         NULL);
-    signed char outX_l;
-    signed char outY_l;
-
+    cv::Mat flowx;
+    cv::Mat flowy;
+    imflowX_g.download(flowx);
+    imflowY_g.download(flowy);
+    cl_char outX_l;
+    cl_char outY_l;
+    cv::imshow("flowX",flowx);
+    cv::imshow("flowY",flowy);
 
     args.clear();
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowX_g.data ));
-    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowY_g.data ));
-    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &outX_l ));
-    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &outY_l ));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanRadius_g));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanDiameter_g));
+    args.push_back( std::make_pair( sizeof(cl_char), (void *) &outX_l ));
 
+    ROS_INFO("here x");
     cv::ocl::openCLExecuteKernelInterop(cv::ocl::Context::getContext(),
                                         *program,
                                         "Histogram",
-                                        NULL,
+                                        one,
                                         block,
                                         args,
                                         1,
                                         0,
                                         NULL);
 
+    args.clear();
+    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowY_g.data ));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanRadius_g));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanDiameter_g));
+    args.push_back( std::make_pair( sizeof(cl_char), (void *) &outY_l ));
+
+    ROS_INFO("here x");
+    cv::ocl::openCLExecuteKernelInterop(cv::ocl::Context::getContext(),
+                                        *program,
+                                        "Histogram",
+                                        one,
+                                        block,
+                                        args,
+                                        1,
+                                        0,
+                                        NULL);
+
+    ROS_INFO("here x");
+    showFlow(flowx,flowy,outX_l, outY_l);
     ROS_INFO("outx: %d; outy: %d",outX_l,outY_l);
     if (debug)
     {
@@ -162,16 +181,15 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
 
     imPrev = imCurr.clone();
 
-    outvec.push_back(cv::Point2f((float)outputX,(float)outputY));
+    outvec.push_back(cv::Point2f((float)outX_l,(float)outY_l));
     return outvec;
 
 }
 
-void FastSpacedBMMethod::showFlow(const cv::ocl::oclMat flowx_g, const cv::ocl::oclMat flowy_g, signed char vXin, signed char vYin)
+void FastSpacedBMMethod::showFlow(const cv::Mat flowx, const cv::Mat flowy, cl_char vXin, cl_char vYin)
 {
-    cv::Mat flowx = cv::Mat(flowx_g);
-    cv::Mat flowy = cv::Mat(flowy_g);
-
+    ROS_INFO("here y");
+    ROS_INFO("here y");
     cv::Mat out;
     drawOpticalFlow(flowx, flowy, out, 10, stepSize);
 
@@ -182,6 +200,7 @@ void FastSpacedBMMethod::showFlow(const cv::ocl::oclMat flowx_g, const cv::ocl::
 
     cv::imshow("Main", imView);
     cv::waitKey(10);
+    ROS_INFO("here y");
 }
 
 void FastSpacedBMMethod::drawOpticalFlow(const cv::Mat_<signed char>& flowx, const cv::Mat_<signed char>& flowy, cv::Mat& dst, float maxmotion,
@@ -195,7 +214,7 @@ void FastSpacedBMMethod::drawOpticalFlow(const cv::Mat_<signed char>& flowx, con
         {
             if ((abs(flowx(y, x)) > scanRadius) || (abs(flowy(y, x))> scanRadius))
             {
-                ROS_WARN("Flow out of bounds: X:%d, Y:%d",flowx(y, x),flowy(y, x));
+                //ROS_WARN("Flow out of bounds: X:%d, Y:%d",flowx(y, x),flowy(y, x));
                 //continue;
             }
             cv::Point2i startPos(x*(step+samplePointSize)+(samplePointSize/2+scanRadius),

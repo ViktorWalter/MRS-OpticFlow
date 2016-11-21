@@ -43,7 +43,7 @@ public:
                                      cv::Point midPoint_t);
 
 private:
-    void showFlow(const cv::ocl::oclMat flowx_g, const cv::ocl::oclMat flowy_g, signed char vXin, signed char vYin);
+    void showFlow(const cv::Mat flowx, const cv::Mat flowy,  cl_char vXin, cl_char vYin);
     void drawOpticalFlow(const cv::Mat_<signed char>& flowx, const cv::Mat_<signed char>& flowy, cv::Mat& dst, float maxmotion,
                          int step);
 
