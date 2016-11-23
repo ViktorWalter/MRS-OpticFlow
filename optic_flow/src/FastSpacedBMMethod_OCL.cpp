@@ -73,7 +73,6 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
         std::cout << "Structure was not initialized; Returning.";
         return outvec;
     }
-    ROS_INFO("here ini");
     midPoint = midPoint_t;
 
     int scanDiameter = (2*scanRadius)+1;
@@ -82,10 +81,8 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
 
     imCurr = imCurr_t;
 
-    ROS_INFO("here");
     imPrev_g.upload(imPrev);
     imCurr_g.upload(imCurr);
-    ROS_INFO("here");
 
     std::size_t grid[3] = {(imPrev.cols-scanRadius*2)/blockszX,
                            (imPrev.rows-scanRadius*2)/blockszY,
@@ -109,7 +106,6 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
 
     int testval = 0;
 
-    ROS_INFO("here");
     std::vector<std::pair<size_t , const void *> > args;
     args.clear();
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imCurr_g.data ));
@@ -143,10 +139,8 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     signed char *outX = new signed char;
     signed char *outY = new signed char;
 
-    ROS_INFO("here");
     cl_mem outVal_x = clCreateBuffer(*(cl_context*)(cv::ocl::Context::getContext()->getOpenCLContextPtr()), CL_MEM_WRITE_ONLY, sizeof(signed char),NULL,NULL);
     cl_mem outVal_y = clCreateBuffer(*(cl_context*)(cv::ocl::Context::getContext()->getOpenCLContextPtr()), CL_MEM_WRITE_ONLY, sizeof(signed char),NULL,NULL);
-    ROS_INFO("here");
 
     args.clear();
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowX_g.data ));
@@ -188,7 +182,6 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
                                  sizeof(signed char), (void *)outX, 0, NULL, NULL);
     clEnqueueReadBuffer(*(cl_command_queue*)(cv::ocl::Context::getContext()->getOpenCLCommandQueuePtr()), outVal_y, CL_TRUE, 0,
                                  sizeof(signed char), (void *)outY, 0, NULL, NULL);
-    ROS_INFO("here");
     clReleaseMemObject(outVal_x);
     clReleaseMemObject(outVal_y);
     imPrev_g.release();
@@ -197,7 +190,6 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     imflowY_g.release();
     clFinish(*(cl_command_queue*)(cv::ocl::Context::getContext()->getOpenCLCommandQueuePtr()));
 
-    ROS_INFO("here");
     showFlow(flowx,flowy,*outX, *outY);
     if (debug)
     {
@@ -211,7 +203,6 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     imPrev = imCurr.clone();
 
     outvec.push_back(cv::Point2f((float)*outX,(float)*outY));
-    ROS_INFO("here fin");
     return outvec;
 
 }
@@ -219,10 +210,8 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
 void FastSpacedBMMethod::showFlow(const cv::Mat flowx, const cv::Mat flowy, signed char vXin, signed char vYin)
 {
     cv::Mat out;
-    ROS_INFO("here");
     drawOpticalFlow(flowx, flowy, out, 10, stepSize);
 
-    ROS_INFO("here");
     cv::line(imView,
               midPoint,
               midPoint+cv::Point2i(((int)vXin*4),((int)vYin*4)),
