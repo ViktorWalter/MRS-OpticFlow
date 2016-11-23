@@ -112,8 +112,8 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     ROS_INFO("here");
     std::vector<std::pair<size_t , const void *> > args;
     args.clear();
-    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imPrev_g.data ));
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imCurr_g.data ));
+    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imPrev_g.data ));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &imSrcWidth_g));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &imSrcOffset_g));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstWidth_g));
