@@ -114,10 +114,11 @@ __kernel void Histogram_C1_D0(__constant signed char* input,
 
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    atomic_add(&(Histogram[input[index]+scanRadius]),1);
+    int HistLoc=(input[index])+scanRadius;
+
+    atomic_add(&(Histogram[HistLoc]),1);
 
     barrier(CLK_LOCAL_MEM_FENCE);
-
 
     if ( (threadY == 0) && (threadX == 0))
     {
