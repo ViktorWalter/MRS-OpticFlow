@@ -190,19 +190,22 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     imflowY_g.release();
     clFinish(*(cl_command_queue*)(cv::ocl::Context::getContext()->getOpenCLCommandQueuePtr()));
 
-    showFlow(flowx,flowy,*outX, *outY);
+    for (int i=0; i<flowy.rows; i++)
+        for (int j=0; j<flowy.cols; j++)
+        {
+            outvec.push_back(cv::Point2f((float)flowx.at<signed char>(j,i),(float)flowy.at<signed char>(j,i)));
+        }
     if (debug)
     {
        // ROS_INFO("out: %dx%d",outX_l.cols,outX_l.rows);
     }
     if (gui)
     {
-       // showFlow(flowX_l, flowY_l;, outputX, outputY);
+        showFlow(flowx,flowy,*outX, *outY);
     }
 
     imPrev = imCurr.clone();
 
-    outvec.push_back(cv::Point2f((float)*outX,(float)*outY));
     return outvec;
 
 }
