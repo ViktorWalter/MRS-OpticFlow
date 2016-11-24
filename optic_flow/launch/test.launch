@@ -13,6 +13,13 @@
 					<arg name="publish" default="true"/>
 					<arg name="useOdom" default="false"/>
 					<arg name="cameraRotated" default="false"/>
+                                        <arg name="RansacNumOfChosen" default="2"/>
+                                        <arg name="RansacNumOfIter" default="50"/>
+                                        <arg name="RansacThresholdRad" default="7"/>
+                                        <arg name="Allsac" default="true"/>
+                                        <arg name="lastSpeedsSize" default="60"/>
+                                        <arg name="analyseDuration" default="1"/>
+
 
 
 				<group ns="$(arg uav_name)">
@@ -65,6 +72,16 @@
                         <param name="CameraImageCompressed"    type="bool" value="false"/>
                         <param name="cameraRotated"    type="bool" value="$(arg cameraRotated)"/>
     	                <param name="useOdom"           type="bool" value="$(arg useOdom)"/>
+
+                        <param name="RansacNumOfChosen" type="int" value="$(arg RansacNumOfChosen)"/>
+                        <param name="RansacNumOfIter"   type="int" value="$(arg RansacNumOfIter)"/>
+                        <param name="RansacThresholdRad"    type="double" value="$(arg RansacThresholdRad)"/>
+                        <param name="Allsac"            type="bool" value="$(arg Allsac)"/>
+
+                        <param name="lastSpeedsSize"            type="int" value="$(arg lastSpeedsSize)"/>
+                        <param name="analyseDuration"            type="double" value="$(arg analyseDuration)"/>
+
+
 	  	            </node>
 	            </group>
 </launch>
