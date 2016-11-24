@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.1)
 project(optic_flow)
 
 FILE(GLOB_RECURSE HEADER_FILES include *.h)
@@ -38,22 +38,7 @@ endif()
 
 
 find_package(OpenCV REQUIRED)
-#set(OpenCV_DIR "~/opencv/build")
-
-#unset(OpenCV_CONFIG_PATH CACHE)
-#unset(OpenCV_DIR CACHE)
-
-#set(TMP_PREFIX_PATH ${CMAKE_PREFIX_PATH})
-
-#set(CMAKE_PREFIX_PATH "$ENV{HOME}/opencv/build")
-#find_package(OpenCV 3.1.0 REQUIRED)
-
-#set(CMAKE_PREFIX_PATH ${TMP_PREFIX_PATH})
-
-#unset(OpenCV_CONFIG_PATH CACHE)
-#unset(OpenCV_DIR CACHE)
-
-
+find_package(OpenCL REQUIRED)
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -104,6 +89,7 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  ${OpenCL_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
 
@@ -128,7 +114,7 @@ add_library(fastSpaced_method src/FastSpacedBMethod.cpp)
 add_library(fastSpacedOCL_method src/FastSpacedBMMethod_OCL.cpp)
 target_link_libraries(fft_method ${OpenCV_LIBRARIES})
 target_link_libraries(block_method ${OpenCV_LIBRARIES})
-target_link_libraries(fastSpacedOCL_method ${OpenCV_LIBRARIES})
+target_link_libraries(fastSpacedOCL_method ${OpenCV_LIBRARIES} ${OpenCL_LIBRARIES} ${catkin_LIBRARIES})
 
 ## Declare a C++ executable
 add_executable(optic_flow_node src/optic_flow.cpp)

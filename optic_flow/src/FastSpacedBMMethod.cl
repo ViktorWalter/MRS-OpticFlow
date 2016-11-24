@@ -3,19 +3,23 @@
 
 __kernel void OptFlow_C1_D0(	__constant unsigned char* input_1,
                                 __constant unsigned char* input_2,
-                                __global unsigned char* output_X,
-                                __global unsigned char* output_Y,
+                                int imgSrcWidth,
+                                int imgSrcOffset,
+                                int imgDstWidth,
+                                int imgDstOffset,
+                                __global signed char* output_X,
+                                __global signed char* output_Y,
                                 int blockSize,
                                 int blockStep,
-                                int scanRadius,
-                                int width,
-                                int height)
+                                int scanRadius)
 {
         int blockX = get_group_id(0);
         int blockY = get_group_id(1);
         int threadX = get_local_id(0);
         int threadY = get_local_id(1);
 
+        if ((blockX) >= imgDstWidth)
+            return;
 
         int ScanDiameter = scanRadius*2+1;
         __local int abssum[arraySize][arraySize];
@@ -28,12 +32,11 @@ __kernel void OptFlow_C1_D0(	__constant unsigned char* input_1,
                 {
                     atomic_add(&(abssum[threadY][threadX]),
                             abs(
-                                atomic_sub(
-                                 input_1(((blockX*(blockSize+blockStep)) + scanRadius + i),
-                                         ((blockY*(blockSize+blockStep)) + scanRadius + j))
-                                 ,
-                                 input_2(((blockX*(blockSize+blockStep)) + i + threadY),
-                                         ((blockY*(blockSize+blockStep)) + j + threadX))
+                                 input_1[((imgSrcOffset + blockX*(blockSize+blockStep)) + scanRadius + i)+
+                                         ((blockY*(blockSize+blockStep)) + scanRadius + j)*imgSrcWidth]
+                                 -
+                                 input_2[((imgSrcOffset + blockX*(blockSize+blockStep)) + i + threadX)+
+                                         ((blockY*(blockSize+blockStep)) + j + threadY)*imgSrcWidth]
                                  )
                             );
                 }
@@ -50,7 +53,7 @@ __kernel void OptFlow_C1_D0(	__constant unsigned char* input_1,
         {
            minval[threadX] = abssum[threadX][0];
            minX[threadX] = -scanRadius;
-           for (int i=1;i<scanDiameter;i++)
+           for (int i=1;i<ScanDiameter;i++)
            {
               if (minval[threadX] > abssum[threadX][i])
               {
@@ -65,9 +68,10 @@ __kernel void OptFlow_C1_D0(	__constant unsigned char* input_1,
 
         if ( (threadY == 0) && (threadX == 0))
         {
+
            int minvalFin = minval[0];
            minY = -scanRadius;
-           for (int i=1;i<scanDiameter;i++)
+           for (int i=1;i<ScanDiameter;i++)
               {
                  if (minvalFin > minval[i])
                  {
@@ -75,50 +79,53 @@ __kernel void OptFlow_C1_D0(	__constant unsigned char* input_1,
                     minY = i-scanRadius;
                  }
               }
-           output_Y(blockY,blockX) = minY;
-           output_X(blockY,blockX) = minX[minY+scanRadius];
+           output_Y[blockY*imgDstWidth+imgDstOffset + blockX] = minY;
+           output_X[blockY*imgDstWidth+imgDstOffset + blockX] = minX[minY+scanRadius];
 
            if ((abssum[scanRadius][scanRadius] - minvalFin) <= MinValThreshold)  //if the difference is small, then it is considered to be noise in a uniformly colored area
            {
-              output_Y(blockY,blockX) = 0;
-              output_X(blockY,blockX) = 0;
+              output_Y[blockY*imgDstWidth+imgSrcOffset+blockX] = 0;
+              output_X[blockY*imgDstWidth+imgSrcOffset+blockX] = 0;
            }
 
         }
 
 }
 
-__kernel void Histogram(__constant signed char input,
+__kernel void Histogram_C1_D0(__constant signed char* input,
+                                    int width,
+                                    int offset,
                                   int scanRadius,
-                                  int scanDiameter,
-                                  signed char value)
+                                  int ScanDiameter,
+                                __global signed char* value)
 {
 
-        int blockX = get_group_id(0);
-        int blockY = get_group_id(1);
         int threadX = get_local_id(0);
         int threadY = get_local_id(1);
 
         __local int Histogram[arraySize];
 
 
-    int index = (threadY*blockDim.x+threadX);
-    if (index < scanDiameter)
-        Histogram[index] = 0;
+    int index = (threadY*width+threadX+offset);
 
-    __syncthreads();
+    int threadNum = (threadY*get_local_size(0) + threadX);
+    if (threadNum < ScanDiameter)
+        Histogram[threadNum] = 0;
 
-    atomicAdd(&(Histogram[input(threadY,threadX)+scanRadius]),1);
+    barrier(CLK_LOCAL_MEM_FENCE);
 
-    __syncthreads();
+    int HistLoc=(input[index])+scanRadius;
 
+    atomic_add(&(Histogram[HistLoc]),1);
+
+    barrier(CLK_LOCAL_MEM_FENCE);
 
     if ( (threadY == 0) && (threadX == 0))
     {
         int MaxIndex = 0;
         char  MaxVal = 0;
 
-        for (int i=0;i<scanDiameter;i++)
+        for (int i=0;i<ScanDiameter;i++)
         {
             if (MaxVal < Histogram[i])
             {
@@ -132,4 +139,4 @@ __kernel void Histogram(__constant signed char input,
     }
 
 }
-/
+
