@@ -93,7 +93,7 @@ __kernel void OptFlow_C1_D0(	__constant unsigned char* input_1,
 }
 
 __kernel void Histogram_C1_D0(__constant signed char* input,
-                              __global unsigned char* histPos)
+                              __global unsigned char* histPos,
                                     int width,
                                     int offset,
                                   int scanRadius,
