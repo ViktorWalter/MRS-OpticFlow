@@ -49,6 +49,8 @@ struct PointValue
     cv::Point2i location;
 };
 
+
+
 class OpticFlow
 {
 public:
@@ -111,6 +113,10 @@ public:
         RansacThresholdRadSq = pow(RansacThresholdRad,2);
         private_node_handle.param("Allsac", Allsac, bool(true));
 
+        private_node_handle.param("lastSpeedsSize", lastSpeedsSize, int(60));
+        private_node_handle.param("analyseDuration", analyseDuration, double(1));
+
+
 
         if(Allsac && RansacNumOfChosen != 2){
             ROS_WARN("When Allsac is enabled, the RansacNumOfChosen can be only 2.");
@@ -154,6 +160,7 @@ public:
         private_node_handle.getParam("max_px_speed", max_px_speed_t);
         private_node_handle.getParam("max_speed", maxSpeed);
         private_node_handle.getParam("max_acceleration", maxAccel);
+        private_node_handle.getParam("speed_noise", speed_noise);
 
 
 
@@ -229,6 +236,7 @@ public:
         //image_transport::ImageTransport iTran(node);
 
         VelocityPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity", 1);
+        VelocitySDPublisher = node.advertise<geometry_msgs::Vector3>("/optFlow/velocity_stddev", 1);
         VelocityRawPublisher = node.advertise<geometry_msgs::Twist>("/optFlow/velocity_raw", 1);
 
 
@@ -280,6 +288,9 @@ private:
 
         angVel = cv::Point2d(odom_msg.twist.twist.angular.y,odom_msg.twist.twist.angular.x);
 
+
+        odomSpeed = cv::Point2f(odom_msg.twist.twist.linear.x,odom_msg.twist.twist.linear.y);
+        odomSpeedTime = ros::Time::now();
 
         if (currentRange > maxTerraRange)
         {
@@ -427,15 +438,23 @@ private:
         rotateAllPts(speeds,phi);
 
         // Bound speeds
-        ros::Time timeNow = ros::Time::now();
-        ros::Duration timeDif = timeNow - lastPublish;
 
-        float max_sp_from_accel = lastVelocity + maxAccel*timeDif.toSec();
+        ros::Duration timeDif = ros::Time::now() - odomSpeedTime;
+        float max_sp_dif_from_accel = maxAccel*timeDif.toSec() + speed_noise; // speed_noise is always significantly hihger
 
-        speeds = getOnlyInAbsBound(speeds,0,maxSpeed); // bound according to max speed
-        speeds = getOnlyInAbsBound(speeds,0,max_sp_from_accel); // bound according to max acceleration
+        if(DEBUG)
+            ROS_INFO("Speeds before bound #%lu",speeds.size());
+        speeds = getOnlyInAbsBound(speeds,maxSpeed); // bound according to max speed
+        if(DEBUG)
+            ROS_INFO("Speeds after speed bound #%lu, max speed: %f",speeds.size(),maxSpeed);
+        /*speeds = getOnlyInAbsBound(speeds,max_sp_from_accel); // bound according to max acceleration*/
+        speeds = getOnlyInRadiusFromTruth(odomSpeed,speeds,max_sp_dif_from_accel);
+        if(DEBUG)
+            ROS_INFO("Speeds after acceleration bound #%lu, max speed from acc: %f",speeds.size(),max_sp_dif_from_accel);
 
         if(speeds.size() < 1){
+//            if(DEBUG)
+                ROS_WARN("No speeds after bounding, can't publish!");
             return;
         }
 
@@ -456,6 +475,21 @@ private:
             ROS_INFO("vxm = %f; vym=%f; vzm=%f; vam=%f; range=%f; yaw=%f",vxm,vym,Zvelocity,vam,trueRange,yaw );
         }
 
+        // Add speedbox to lastspeeds array
+        SpeedBox sb;
+        sb.time = ros::Time::now();
+        sb.speed = out;
+        sb.odomSpeed = odomSpeed;
+
+        if(lastSpeeds.size() >= lastSpeedsSize){
+            lastSpeeds.erase(lastSpeeds.begin());
+        }
+        lastSpeeds.push_back(sb);
+
+        // Create statistical data
+        ros::Time fromTime = sb.time - ros::Duration(analyseDuration);
+        StatData sd = analyzeSpeeds(fromTime,lastSpeeds);
+
         // Publish it
         velocity.linear.x = vxm;
         velocity.linear.y = vym;
@@ -463,8 +497,12 @@ private:
         velocity.angular.z = trueRange;
         VelocityPublisher.publish(velocity);
 
-        lastPublish = timeNow; // remember time from the point on some line higher because RANSAC and even ALLSAC can have very different processing time
-        lastVelocity = vam;
+        geometry_msgs::Vector3 v3;
+        v3.x = sd.stdDevX;
+        v3.y = sd.stdDevY;
+        v3.z = sd.stdDev;
+        VelocitySDPublisher.publish(v3);
+
 
         // Warn on wrong values
         if(abs(vxm) > 1000 || abs(vym) > 1000)
@@ -482,7 +520,8 @@ private:
 
     ros::Subscriber ImageSubscriber;
     ros::Subscriber RangeSubscriber;
-    ros::Publisher VelocityPublisher;    
+    ros::Publisher VelocityPublisher;
+    ros::Publisher VelocitySDPublisher;
     ros::Publisher VelocityRawPublisher;
 
     ros::Subscriber TiltSubscriber;
@@ -549,13 +588,16 @@ private:
     float maxSpeed;
     float maxAccel;
     bool checkAccel;
-    ros::Time lastPublish;
-    float lastVelocity;
 
     cv::Point2d angVel;
 
+    cv::Point2f odomSpeed;
+    ros::Time odomSpeedTime;
+    float speed_noise;
 
-
+    std::vector<SpeedBox> lastSpeeds;
+    int lastSpeedsSize;
+    double analyseDuration;
 };
 
 

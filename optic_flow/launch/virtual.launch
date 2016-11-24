@@ -19,6 +19,11 @@
         <arg name="RansacNumOfIter" default="50"/>
         <arg name="RansacThresholdRad" default="7"/>
         <arg name="Allsac" default="true"/>
+        <arg name="lastSpeedsSize" default="60"/>
+        <arg name="analyseDuration" default="1"/>
+
+
+
 	
         <arg name="useOdom" default="true"/>
 
@@ -65,9 +70,12 @@
                         <param name="RansacThresholdRad"    type="double" value="$(arg RansacThresholdRad)"/>
                         <param name="Allsac"            type="bool" value="$(arg Allsac)"/>
 
+                        <param name="lastSpeedsSize"            type="int" value="$(arg lastSpeedsSize)"/>
+                        <param name="analyseDuration"            type="double" value="$(arg analyseDuration)"/>
+
                 </node>
 	  	
-                <node pkg="rosbag" type="record" name="recorder"  args="/uav5/mbzirc_odom/new_odom /optFlow/velocity /optFlow/velocity_raw -O /$(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/eval_out/SpeedCompareM$(arg method)B$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize)F$(arg FrameSize)-$(arg info).bag" />
+                <node pkg="rosbag" type="record" name="recorder"  args="/uav5/mbzirc_odom/new_odom /optFlow/velocity /optFlow/velocity_raw /optFlow/velocity_stddev -O /$(env HOME)/ros_workspace/src/MRS-OpticFlow/optic_flow/bags/eval_out/SpeedCompareM$(arg method)B$(arg SamplePointSize)R$(arg ScanRadius)S$(arg StepSize)F$(arg FrameSize)-$(arg info).bag" />
 
 	</group>
 </launch>

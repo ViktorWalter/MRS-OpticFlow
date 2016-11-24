@@ -3,6 +3,7 @@ image_height: 240
 max_px_speed: 70
 max_speed: 8.33
 max_acceleration: 2.77
+speed_noise: 1.5
 camera_name: narrow_stereo
 camera_matrix:
   rows: 3

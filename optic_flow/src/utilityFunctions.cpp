@@ -53,7 +53,6 @@ float getNormSq(cv::Point2f p1){
     return pow(p1.x,2) + pow(p1.y,2);
 }
 
-
 cv::Point2f twoPointMean(cv::Point2f p1, cv::Point2f p2){
     return cv::Point2f((p1.x+p2.x)/2, (p1.y+p2.y)/2);
 }
@@ -99,7 +98,7 @@ cv::Point2f allsacMean(std::vector<cv::Point2f> pts, float thresholdRadius_sq){
 void multiplyAllPts(std::vector<cv::Point2f> &v,float mulx,float muly){
     for(uint i=0;i<v.size();i++){
         v[i].x *= mulx;
-        v[i].y *= mulx;
+        v[i].y *= muly;
     }
 }
 
@@ -152,14 +151,13 @@ cv::Point2f ransacMean(std::vector<cv::Point2f> pts, int numOfChosen, float thre
     return bestIter;
 }
 
-std::vector<cv::Point2f> getOnlyInAbsBound(std::vector<cv::Point2f> v,float low,float up){
+std::vector<cv::Point2f> getOnlyInAbsBound(std::vector<cv::Point2f> v,float up){
     std::vector<cv::Point2f> ret;
-    float lowSq = pow(low,2);
-    float upSq = pow(up,2);
+    float upSq = up*up;
     float n;
     for(int i=0;i<v.size();i++){
         n = getNormSq(v[i]);
-        if(n > lowSq && n < upSq){
+        if(n < upSq){
             ret.push_back(v[i]);
         }
     }
@@ -175,4 +173,78 @@ std::vector<cv::Point2f> removeNanPoints(std::vector<cv::Point2f> v){
         }
     }
     return ret;
+}
+
+std::vector<cv::Point2f> getOnlyInRadiusFromTruth(cv::Point2f truth, std::vector<cv::Point2f> v, float rad){
+    std::vector<cv::Point2f> ret;
+    float radSq = rad*rad;
+    float n;
+    for(int i=0;i<v.size();i++){
+        n = getDistSq(truth,v[i]);
+        if(n < radSq){
+            ret.push_back(v[i]);
+        }
+    }
+    return ret;
+}
+
+float absf(float x){
+    return x > 0 ? x : -x;
+}
+
+StatData analyzeSpeeds(ros::Time fromTime, std::vector<SpeedBox> speeds){
+    SpeedBox sb;
+
+    float sum = 0;
+    float sumsq = 0;
+    uint num = 0;
+
+    float dif;
+
+    float sumx = 0;
+    float sumxsq = 0;
+
+    float sumy = 0;
+    float sumysq = 0;
+
+    for(uint i =0;i < speeds.size();i++){
+        sb = speeds[i];
+
+        if(sb.time > fromTime){
+            num++;
+            dif = getDistSq(sb.speed,sb.odomSpeed);
+            sumsq += dif;
+            sum += sqrt(dif);
+
+
+            dif = absf(sb.odomSpeed.x - sb.speed.x);
+            sumx += dif;
+            sumxsq += dif*dif;
+
+
+            dif = absf(sb.odomSpeed.y - sb.speed.y);
+            sumy += dif;
+            sumysq += dif*dif;
+
+
+        }
+    }
+
+
+    float numf = (float)num;
+    float exx = sumsq/numf;// E(X^2)
+    float ex = sum/numf;
+
+    StatData sd;
+    sd.mean = ex;
+    sd.stdDev = sqrt(exx - ex*ex);
+    sd.num = num;
+
+    sd.meanX = sumx/numf;
+    sd.stdDevX = sqrt(sumxsq/numf - sd.meanX*sd.meanX);
+
+    sd.meanY = sumy/numf;
+    sd.stdDevY = sqrt(sumysq/numf - sd.meanY*sd.meanY);
+
+    return sd;
 }
