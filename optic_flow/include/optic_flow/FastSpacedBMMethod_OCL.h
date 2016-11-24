@@ -23,6 +23,9 @@ private:
     cv::ocl::oclMat imflowX_g;
     cv::ocl::oclMat imflowY_g;
 
+    cv::ocl::oclMat imHistPosX_g;
+    cv::ocl::oclMat imHistPosY_g;
+
 
     int samplePointSize;
     int scanRadius;

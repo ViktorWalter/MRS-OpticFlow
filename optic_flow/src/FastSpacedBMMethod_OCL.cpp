@@ -95,6 +95,8 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
 
     imflowX_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8SC1);
     imflowY_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8SC1);
+    imHistPosX_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8UC1);
+    imHistPosY_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8UC1);
     int imSrcWidth_g = imCurr_g.step / imCurr_g.elemSize();
     int imSrcOffset_g = imCurr_g.offset / imCurr_g.elemSize();
     int imDstWidth_g = imflowX_g.step / imflowX_g.elemSize();
@@ -144,6 +146,7 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
 
     args.clear();
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowX_g.data ));
+    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imHistPosX_g.data ));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstWidth_g));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstOffset_g));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanRadius_g));
@@ -162,6 +165,7 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
 
     args.clear();
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowY_g.data ));
+    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imHistPosY_g.data ));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstWidth_g));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstOffset_g));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanRadius_g));
@@ -188,12 +192,19 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     imCurr_g.release();
     imflowX_g.release();
     imflowY_g.release();
+    cv::Mat HistPosX(cv::Size(grid[0],grid[1]),CV_8UC1);
+    cv::Mat HistPosY(cv::Size(grid[0],grid[1]),CV_8UC1);
+    HistPosX = cv::Scalar(0);
+    HistPosY = cv::Scalar(0);
+    imHistPosX_g.download(HistPosX);
+    imHistPosY_g.download(HistPosY);
     clFinish(*(cl_command_queue*)(cv::ocl::Context::getContext()->getOpenCLCommandQueuePtr()));
 
     for (int i=0; i<flowy.rows; i++)
         for (int j=0; j<flowy.cols; j++)
         {
-            outvec.push_back(cv::Point2f((float)flowx.at<signed char>(j,i),(float)flowy.at<signed char>(j,i)));
+            if ((HistPosX.at<unsigned char>(j,i) > 3) || (HistPosY.at<unsigned char>(j,i) > 3))
+                outvec.push_back(cv::Point2f((float)flowx.at<signed char>(j,i),(float)flowy.at<signed char>(j,i)));
         }
     if (debug)
     {
