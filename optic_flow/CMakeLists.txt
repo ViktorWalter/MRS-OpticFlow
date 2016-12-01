@@ -32,14 +32,14 @@ if(NOT CUDA_FOUND)
     message("CUDA NOT FOUND")
 else()
     set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -DMY_DEF=1 -arch sm_21")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMY_DEF=1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMY_DEF=1 ")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMY_DEF=1")
 endif()
 
 
 find_package(OpenCV REQUIRED)
 find_package(OpenCL REQUIRED)
-
+message("${OpenCL_INCLUDE_DIRS} ${OpenCL_LIBRARIES}")
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################

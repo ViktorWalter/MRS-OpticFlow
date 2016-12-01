@@ -92,74 +92,114 @@ __kernel void OptFlow_C1_D0(	__constant unsigned char* input_1,
 
 }
 
-__kernel void Histogram_C1_D0(__constant signed char* input,
-                              __global unsigned char* histPos,
+__kernel void Histogram_C1_D0(__constant signed char* inputX,
+                              __global signed char* inputY,
                                     int width,
                                     int offset,
                                   int scanRadius,
                                   int ScanDiameter,
-                                __global signed char* value)
+                                __global signed char* valueX,
+                                __global signed char* valueY,
+                                int TestDepth,
+                                __global signed char* outVecX,
+                                __global signed char* outVecY
+                                )
 {
 
         int threadX = get_local_id(0);
         int threadY = get_local_id(1);
 
-        __local int Histogram[arraySize];
-        __local int HistIndex[arraySize];
+        int totalBlockSize = get_local_size(0)*get_local_size(1);
+        int HistSize = ScanDiameter;
 
-    int index = (threadY*width+threadX+offset);
+        __local int HistogramX[arraySize];
+        __local int HistogramY[arraySize];
+        __local int HistIndexX[arraySize];
+        __local int HistIndexY[arraySize];
 
-    int threadNum = (threadY*get_local_size(0) + threadX);
-    if (threadNum < ScanDiameter)
+    int imageIndex = (threadY*width+threadX+offset);
+    int threadIndex = (threadY*get_local_size(0) + threadX);
+
+    for (int i=0; ; i++)
     {
-        Histogram[threadNum] = 0;
-        HistIndex[threadNum] = threadNum;
+      int HistIndex = threadIndex + (i*totalBlockSize);
+      if (HistIndex > HistSize)
+      {
+        break;
+      }
+
+      HistogramX[HistIndex] = 0;
+      HistogramY[HistIndex] = 0;
+      HistIndexX[HistIndex] = HistIndex - scanRadius;
+      HistIndexY[HistIndex] = HistIndex - scanRadius;
     }
 
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    int HistLocX=(inputX[imageIndex])+scanRadius;
+    int HistLocY=(inputY[imageIndex])+scanRadius;
+
+    atomic_add(&(HistogramX[HistLocX]),1);
+    atomic_add(&(HistogramY[HistLocY]),1);
 
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    int HistLoc=(input[index])+scanRadius;
-
-    atomic_add(&(Histogram[HistLoc]),1);
-
-    barrier(CLK_LOCAL_MEM_FENCE);
-
-    if ( (threadY == 0) && (threadX == 0))
+    bool swapped;
+    if (threadIndex == 0)
     {
-        bool swapped;
-
-    do
-    {
-    swapped = false;
-    for (int i=1;i<ScanDiameter;i++)
+      do
+      {
+        swapped = false;
+        for (int i=1;i<HistSize;i++)
         {
-            if (Histogram[i-1] < Histogram[i])
-            {
-                Histogram[i] = atomic_xcg(&(Histogram[i-1],Histogram[i]);
-                HistIndex[i] = atomic_xcg(&(HistIndex[i-1],HistIndex[i]);
-
-                swapped = true;
-            }
+          if (HistogramX[i] > HistogramX[i-1])
+          {
+            HistogramX[i] = atomic_xchg(&(HistogramX[i-1]),HistogramX[i]);
+            HistIndexX[i] = atomic_xchg(&(HistIndexX[i-1]),HistIndexX[i]);
+            swapped = true;
+          }
         }
-    } while (swapped == true)
+      } while (swapped == true);
+    }
 
-        *value = HistIndex[0] - scanRadius;
+    if (threadIndex == 1)
+    {
+      do
+      {
+        swapped = false;
+        for (int i=1;i<HistSize;i++)
+        {
+          if (HistogramY[i] > HistogramY[i-1])
+          {
+            HistogramY[i] = atomic_xchg(&(HistogramY[i-1]),HistogramY[i]);
+            HistIndexY[i] = atomic_xchg(&(HistIndexY[i-1]),HistIndexY[i]);
+            swapped = true;
+          }
+        }
+      } while (swapped == true);
     }
 
     barrier(CLK_LOCAL_MEM_FENCE);
 
+       *valueX = HistIndexX[0];
+       *valueY = HistIndexY[0];
 
-    int currHistIndex;
-    for (int i = 0; i<ScanDiameter; i++)
-    {
-        if (HistIndex[i] == HistLoc)
-        {
-            currHistIndex = i;
-            break;
-        }
 
-    }
-    histPos[index] = currHistIndex;
+    if (threadIndex == 0)
+     {
+     int outIndex = 0;
+     for (int i=0; i<TestDepth; i++)
+     {
+      for (int j=0; j<TestDepth; j++)
+      {
+        outVecX[outIndex] = HistIndexX[i];
+        outVecY[outIndex] = HistIndexY[j];
+        outIndex++;
+      }
+     }
+     }
+
+
+
 }
 

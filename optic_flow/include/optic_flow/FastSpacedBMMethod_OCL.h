@@ -6,7 +6,7 @@
 #include <image_transport/image_transport.h>
 #include "optic_flow/OpticFlowCalc.h"
 #include <opencv2/core/core.hpp>
-#include <CL/cl.h>
+#include <CL/cl.hpp>
 #include <opencv2/ocl/ocl.hpp>
 
 
@@ -23,9 +23,8 @@ private:
     cv::ocl::oclMat imflowX_g;
     cv::ocl::oclMat imflowY_g;
 
-    cv::ocl::oclMat imHistPosX_g;
-    cv::ocl::oclMat imHistPosY_g;
-
+    cv::ocl::oclMat OutVectorX_g;
+    cv::ocl::oclMat OutVectorY_g;
 
     int samplePointSize;
     int scanRadius;
