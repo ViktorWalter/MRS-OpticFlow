@@ -24,8 +24,40 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
     p1 = i_p1;
     p2 = i_p2;
 
+    std::vector<cl::Platform> all_platforms;
+    cl::Platform::get(&all_platforms);
+    std::vector<cl::Device> all_devices;
+    if (all_platforms.size() == 0)
+     {
+     std::cout << "No platforms found. Check OpenCL installation!\n";
+     exit(1);
+     }
+     for (int i=0; i<all_platforms.size();i++)
+     {
+     cl::Platform default_platform = all_platforms[i];
+     std::cout << "Using platform: " << default_platform.getInfo<CL_PLATFORM_NAME>() << "\n";
+
+    default_platform.getDevices(CL_DEVICE_TYPE_ALL, &all_devices);
+     if (all_devices.size() == 0)
+     {
+     std::cout << "No devices found. Check OpenCL installation!\n";
+     exit(1);
+     }
+     for (int j=0; j<all_devices.size();j++)
+     {
+     cl::Device default_device = all_devices[j];
+     std::cout << "Using device: " << default_device.getInfo<CL_DEVICE_NAME>() << "\n";
+     }}
+    cv::ocl::PlatformsInfo platsInfo;
+    if (cv::ocl::getOpenCLPlatforms(platsInfo))
+    {
+        for (int i=0; i<platsInfo.size(); i++)
+        {
+            std::cout << "Platform " << i+1 << ": " << platsInfo[i]->platformName << std::endl;
+        }
+    }
     cv::ocl::DevicesInfo devsInfo;
-    if (cv::ocl::getOpenCLDevices(devsInfo))
+    if (cv::ocl::getOpenCLDevices(devsInfo,cv::ocl::CVCL_DEVICE_TYPE_ALL))
     {
         for (int i=0; i<devsInfo.size(); i++)
         {
@@ -37,6 +69,8 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
         std::cout << "No devices found." << std::endl;
         return;
     }
+
+    cv::ocl::setDevice(devsInfo[0]);
 
     FILE *program_handle;
     size_t program_size;
@@ -93,10 +127,9 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     std::size_t one[3] = {1,1,1};
 
 
+    int TestDepth = 3; // how many first values will be taken into consideration per axis: 3 -> first 9 combinations
     imflowX_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8SC1);
     imflowY_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8SC1);
-    imHistPosX_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8UC1);
-    imHistPosY_g = cv::ocl::oclMat(cv::Size(grid[0],grid[1]),CV_8UC1);
     int imSrcWidth_g = imCurr_g.step / imCurr_g.elemSize();
     int imSrcOffset_g = imCurr_g.offset / imCurr_g.elemSize();
     int imDstWidth_g = imflowX_g.step / imflowX_g.elemSize();
@@ -105,8 +138,6 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     int stepSize_g = stepSize;
     int scanRadius_g = scanRadius;
     int scanDiameter_g = scanDiameter;
-
-    int testval = 0;
 
     std::vector<std::pair<size_t , const void *> > args;
     args.clear();
@@ -131,46 +162,26 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
                                         1,
                                         0,
                                         NULL);
-    cv::Mat flowx(cv::Size(grid[0],grid[1]),CV_8SC1);
-    cv::Mat flowy(cv::Size(grid[0],grid[1]),CV_8SC1);
-    flowy = cv::Scalar(0);
-    flowx = cv::Scalar(0);
-    imflowX_g.download(flowx);
-    imflowY_g.download(flowy);
-//    std::cout << flowy;
-    signed char *outX = new signed char;
-    signed char *outY = new signed char;
+    //clFinish(*(cl_command_queue*)(cv::ocl::Context::getContext()->getOpenCLCommandQueuePtr()));
 
     cl_mem outVal_x = clCreateBuffer(*(cl_context*)(cv::ocl::Context::getContext()->getOpenCLContextPtr()), CL_MEM_WRITE_ONLY, sizeof(signed char),NULL,NULL);
     cl_mem outVal_y = clCreateBuffer(*(cl_context*)(cv::ocl::Context::getContext()->getOpenCLContextPtr()), CL_MEM_WRITE_ONLY, sizeof(signed char),NULL,NULL);
 
+    OutVectorX_g = cv::ocl::oclMat(cv::Size(TestDepth*TestDepth,1),CV_8SC1);
+    OutVectorY_g = cv::ocl::oclMat(cv::Size(TestDepth*TestDepth,1),CV_8SC1);
+
     args.clear();
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowX_g.data ));
-    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imHistPosX_g.data ));
+    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowY_g.data ));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstWidth_g));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstOffset_g));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanRadius_g));
     args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanDiameter_g));
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &outVal_x ));
-
-    cv::ocl::openCLExecuteKernelInterop(cv::ocl::Context::getContext(),
-                                        *program,
-                                        "Histogram",
-                                        one,
-                                        grid,
-                                        args,
-                                        1,
-                                        0,
-                                        NULL);
-
-    args.clear();
-    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imflowY_g.data ));
-    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &imHistPosY_g.data ));
-    args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstWidth_g));
-    args.push_back( std::make_pair( sizeof(cl_int), (void *) &imDstOffset_g));
-    args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanRadius_g));
-    args.push_back( std::make_pair( sizeof(cl_int), (void *) &scanDiameter_g));
     args.push_back( std::make_pair( sizeof(cl_mem), (void *) &outVal_y ));
+    args.push_back( std::make_pair( sizeof(cl_int), (void *) &TestDepth));
+    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &OutVectorX_g.data ));
+    args.push_back( std::make_pair( sizeof(cl_mem), (void *) &OutVectorY_g.data ));
 
     cv::ocl::openCLExecuteKernelInterop(cv::ocl::Context::getContext(),
                                         *program,
@@ -182,6 +193,9 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
                                         0,
                                         NULL);
 
+
+    signed char *outX = new signed char;
+    signed char *outY = new signed char;
     clEnqueueReadBuffer(*(cl_command_queue*)(cv::ocl::Context::getContext()->getOpenCLCommandQueuePtr()), outVal_x, CL_TRUE, 0,
                                  sizeof(signed char), (void *)outX, 0, NULL, NULL);
     clEnqueueReadBuffer(*(cl_command_queue*)(cv::ocl::Context::getContext()->getOpenCLCommandQueuePtr()), outVal_y, CL_TRUE, 0,
@@ -190,22 +204,23 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     clReleaseMemObject(outVal_y);
     imPrev_g.release();
     imCurr_g.release();
+    cv::Mat flowx(cv::Size(grid[0],grid[1]),CV_8SC1);
+    cv::Mat flowy(cv::Size(grid[0],grid[1]),CV_8SC1);
+    imflowX_g.download(flowx);
+    imflowY_g.download(flowy);
     imflowX_g.release();
     imflowY_g.release();
-    cv::Mat HistPosX(cv::Size(grid[0],grid[1]),CV_8UC1);
-    cv::Mat HistPosY(cv::Size(grid[0],grid[1]),CV_8UC1);
-    HistPosX = cv::Scalar(0);
-    HistPosY = cv::Scalar(0);
-    imHistPosX_g.download(HistPosX);
-    imHistPosY_g.download(HistPosY);
+    cv::Mat outVecX(cv::Size(grid[0],grid[1]),CV_8SC1);
+    cv::Mat outVecY(cv::Size(grid[0],grid[1]),CV_8SC1);
+    OutVectorX_g.download(outVecX);
+    OutVectorY_g.download(outVecY);
+    OutVectorX_g.release();
+    OutVectorY_g.release();
     clFinish(*(cl_command_queue*)(cv::ocl::Context::getContext()->getOpenCLCommandQueuePtr()));
 
-    for (int i=0; i<flowy.rows; i++)
-        for (int j=0; j<flowy.cols; j++)
-        {
-            if ((HistPosX.at<unsigned char>(j,i) > 3) || (HistPosY.at<unsigned char>(j,i) > 3))
-                outvec.push_back(cv::Point2f((float)flowx.at<signed char>(j,i),(float)flowy.at<signed char>(j,i)));
-        }
+    outvec.clear();
+    for (int i=0; i<TestDepth*TestDepth; i++)
+        outvec.push_back(cv::Point2f((float)outVecX.at<signed char>(0,i),(float)outVecY.at<signed char>(0,i)));
     if (debug)
     {
        // ROS_INFO("out: %dx%d",outX_l.cols,outX_l.rows);
