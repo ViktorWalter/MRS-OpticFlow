@@ -10,9 +10,8 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
                                      int i_k1,int i_k2,int i_k3,int i_p1,int i_p2)
     {
     initialized = false;
-
-    samplePointSize = i_samplePointSize;
     scanRadius = i_scanRadius;
+    samplePointSize = i_samplePointSize;
     stepSize = i_stepSize;
     cx = i_cx;
     cy = i_cy;
@@ -24,7 +23,7 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
     p1 = i_p1;
     p2 = i_p2;
 
-    std::vector<cl::Platform> all_platforms;
+/*  std::vector<cl::Platform> all_platforms;
     cl::Platform::get(&all_platforms);
     std::vector<cl::Device> all_devices;
     if (all_platforms.size() == 0)
@@ -55,7 +54,7 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
         {
             std::cout << "Platform " << i+1 << ": " << platsInfo[i]->platformName << std::endl;
         }
-    }
+    }*/
     cv::ocl::DevicesInfo devsInfo;
     if (cv::ocl::getOpenCLDevices(devsInfo,cv::ocl::CVCL_DEVICE_TYPE_ALL))
     {
@@ -69,8 +68,15 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
         std::cout << "No devices found." << std::endl;
         return;
     }
-
     cv::ocl::setDevice(devsInfo[0]);
+    int max_wg_size = (cv::ocl::Context::getContext()->getDeviceInfo().maxWorkGroupSize);
+    int viableSD = floor(sqrt(max_wg_size));
+    int viableSR = ((viableSD % 2)==1) ? ((viableSD-1)/2) : ((viableSD-2)/2);
+
+    scanBlock = (scanRadius <= viableSR ? (2*scanRadius+1) : viableSD);
+    ROS_INFO("Using scaning block of %d.",scanBlock);
+    if (scanRadius > viableSR)
+        ROS_INFO("This will require repetitions within threads.");
 
     FILE *program_handle;
     size_t program_size;
@@ -121,7 +127,7 @@ std::vector<cv::Point2f> FastSpacedBMMethod::processImage(cv::Mat imCurr_t,
     std::size_t grid[3] = {(imPrev.cols-scanRadius*2)/blockszX,
                            (imPrev.rows-scanRadius*2)/blockszY,
                            1};
-    std::size_t block[3] = {scanDiameter,scanDiameter,1};
+    std::size_t block[3] = {scanBlock,scanBlock,1};
     //std::size_t global[3] = {block[0]*8,block[1]*8,1};
     std::size_t global[3] = {grid[0]*block[0],grid[1]*block[1],1};
     std::size_t one[3] = {1,1,1};

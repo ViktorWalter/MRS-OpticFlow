@@ -24,24 +24,37 @@ __kernel void OptFlow_C1_D0(	__constant unsigned char* input_1,
         int ScanDiameter = scanRadius*2+1;
         __local int abssum[arraySize][arraySize];
 
-        abssum[threadY][threadX] = 0;
+        int threadDiameter = get_local_size(0);
+        int repetitions = ceil(ScanDiameter/(float)threadDiameter);
 
-            for (int i=0;i<blockSize;i++)
+        for (int m=0; m<repetitions; m++)
+            for (int n=0; n<repetitions; n++)
             {
-                for (int j=0;j<blockSize;j++)
+                int currXshift = n*threadDiameter + threadX;
+                int currYshift = m*threadDiameter + threadY;
+
+                if ((currXshift<ScanDiameter) && (currYshift<ScanDiameter))
                 {
-                    atomic_add(&(abssum[threadY][threadX]),
-                            abs(
+                    abssum[currYshift][currXshift] = 0;
+
+                    for (int i=0;i<blockSize;i++)
+                    {
+                        for (int j=0;j<blockSize;j++)
+                        {
+                            atomic_add(&(abssum[currYshift][currXshift]),
+                              abs(
                                  input_1[((imgSrcOffset + blockX*(blockSize+blockStep)) + scanRadius + i)+
                                          ((blockY*(blockSize+blockStep)) + scanRadius + j)*imgSrcWidth]
                                  -
-                                 input_2[((imgSrcOffset + blockX*(blockSize+blockStep)) + i + threadX)+
-                                         ((blockY*(blockSize+blockStep)) + j + threadY)*imgSrcWidth]
+                                 input_2[((imgSrcOffset + blockX*(blockSize+blockStep)) + i + currXshift)+
+                                         ((blockY*(blockSize+blockStep)) + j + currYshift)*imgSrcWidth]
                                  )
-                            );
-                }
+                                );
+                        }
 
-            }
+                    }
+                }
+             }
 
         barrier(CLK_LOCAL_MEM_FENCE);
 
@@ -51,17 +64,23 @@ __kernel void OptFlow_C1_D0(	__constant unsigned char* input_1,
 
         if (threadY == 0)
         {
-           minval[threadX] = abssum[threadX][0];
-           minX[threadX] = -scanRadius;
-           for (int i=1;i<ScanDiameter;i++)
-           {
-              if (minval[threadX] > abssum[threadX][i])
-              {
-                 minval[threadX] = abssum[threadX][i];
-                 minX[threadX] = i-scanRadius;
-              }
-           }
-        }
+            for (int n=0; n<repetitions; n++)
+            {
+                int currXshift = n*threadDiameter + threadX;
+                if (currXshift > ScanDiameter)
+                  break;
+                minval[currXshift] = abssum[currXshift][0];
+                minX[currXshift] = -scanRadius;
+                for (int i=1;i<ScanDiameter;i++)
+                {
+                  if (minval[currXshift] > abssum[currXshift][i])
+                  {
+                      minval[currXshift] = abssum[currXshift][i];
+                      minX[currXshift] = i-scanRadius;
+                  }
+                }
+            }
+         }
 
         barrier(CLK_LOCAL_MEM_FENCE);
 

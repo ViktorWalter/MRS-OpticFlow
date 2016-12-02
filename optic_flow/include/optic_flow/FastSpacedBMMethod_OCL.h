@@ -29,6 +29,7 @@ private:
     int samplePointSize;
     int scanRadius;
     int stepSize;
+    int scanBlock;
 
     double cx,cy,fx,fy;
     double k1,k2,k3,p1,p2;
