@@ -130,6 +130,7 @@ __kernel void Histogram_C1_D0(__constant signed char* inputX,
 
         int totalBlockSize = get_local_size(0)*get_local_size(1);
         int HistSize = ScanDiameter;
+<<<<<<< HEAD
 
         __local int HistogramX[arraySize];
         __local int HistogramY[arraySize];
@@ -139,6 +140,17 @@ __kernel void Histogram_C1_D0(__constant signed char* inputX,
     int imageIndex = (threadY*width+threadX+offset);
     int threadIndex = (threadY*get_local_size(0) + threadX);
 
+=======
+
+        __local int HistogramX[arraySize];
+        __local int HistogramY[arraySize];
+        __local int HistIndexX[arraySize];
+        __local int HistIndexY[arraySize];
+
+    int imageIndex = (threadY*width+threadX+offset);
+    int threadIndex = (threadY*get_local_size(0) + threadX);
+
+>>>>>>> 90990d9235ea6aa62dfd085c9ad3b7877cf774fe
     for (int i=0; ; i++)
     {
       int HistIndex = threadIndex + (i*totalBlockSize);

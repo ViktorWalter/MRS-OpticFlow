@@ -23,7 +23,11 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
     p1 = i_p1;
     p2 = i_p2;
 
+<<<<<<< HEAD
 /*  std::vector<cl::Platform> all_platforms;
+=======
+    std::vector<cl::Platform> all_platforms;
+>>>>>>> 90990d9235ea6aa62dfd085c9ad3b7877cf774fe
     cl::Platform::get(&all_platforms);
     std::vector<cl::Device> all_devices;
     if (all_platforms.size() == 0)
@@ -54,7 +58,11 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
         {
             std::cout << "Platform " << i+1 << ": " << platsInfo[i]->platformName << std::endl;
         }
+<<<<<<< HEAD
     }*/
+=======
+    }
+>>>>>>> 90990d9235ea6aa62dfd085c9ad3b7877cf774fe
     cv::ocl::DevicesInfo devsInfo;
     if (cv::ocl::getOpenCLDevices(devsInfo,cv::ocl::CVCL_DEVICE_TYPE_ALL))
     {
@@ -77,6 +85,8 @@ FastSpacedBMMethod::FastSpacedBMMethod(int i_samplePointSize,
     ROS_INFO("Using scaning block of %d.",scanBlock);
     if (scanRadius > viableSR)
         ROS_INFO("This will require repetitions within threads.");
+
+    cv::ocl::setDevice(devsInfo[0]);
 
     FILE *program_handle;
     size_t program_size;
